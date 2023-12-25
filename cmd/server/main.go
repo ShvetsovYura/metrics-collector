@@ -2,8 +2,13 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 )
+
+type MemStorage struct {
+	data map[string]string
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -31,15 +36,30 @@ func metricHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pathParts := strings.Split(r.URL.Path, "/")
+	if pathParts[1] != "update" {
+		w.WriteHeader(http.StatusNotFound)
+	}
 	parts := pathParts[2:]
 	if len(parts) < 3 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	mType := parts[0]
-	allowMetircTypes := []string{`gauge`, `counter`}
-	if !contains(allowMetircTypes, mType) {
+	allowMetricTypes := []string{`gauge`, `counter`}
+	if !contains(allowMetricTypes, mType) {
 		w.WriteHeader(http.StatusBadRequest)
+	}
+	if mType == "gauge" {
+		_, err := strconv.ParseFloat(parts[2], 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}
+	if mType == "counter" {
+		_, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
