@@ -10,6 +10,11 @@ type MemStorage struct {
 	data map[string]string
 }
 
+type storage interface {
+	add(int64)
+	change(float64)
+}
+
 func main() {
 	if err := run(); err != nil {
 		panic(err)
