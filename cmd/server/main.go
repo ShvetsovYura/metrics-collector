@@ -7,7 +7,7 @@ import (
 )
 
 type MemStorage struct {
-	data map[string]string
+	metrics map[string]string
 }
 
 type storage interface {
