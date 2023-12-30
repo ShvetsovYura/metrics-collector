@@ -92,13 +92,10 @@ func main() {
 
 	for {
 		if elapsed > 0 && elapsed%poolInterval == 0 {
-			fmt.Println("get metrics")
 			CollectMetrics(&m)
-			// ttt(&m)
 		}
 
 		if elapsed > 0 && elapsed%reportInterval == 0 {
-			fmt.Println("start send")
 			SendMetrics(&m)
 		}
 
@@ -123,9 +120,8 @@ func SendMetrics(m *Metric) {
 		f := v.Field(i)
 		fn := v.Type().Field(i).Name
 		// ft := v.Field(i).Type().String()
-		link, err := makeLink(fn, f)
+		link, err := makeLink(fn, f.Interface())
 		if err == nil {
-			fmt.Println(link)
 			sendRequest(link)
 		}
 	}
@@ -133,16 +129,25 @@ func SendMetrics(m *Metric) {
 
 func makeLink(mName string, v any) (string, error) {
 	var mType string
-	if contains(gaugeFields, mName) {
-		mType = "gauge"
-	}
+	var val string
 
-	if contains(counterFields, mName) {
-		mType = "counter"
+	_, ok := v.(gauge)
+	val = fmt.Sprint(v)
+
+	isGauge := contains(gaugeFields, mName)
+	isCounter := contains(counterFields, mName)
+	if ok && isGauge {
+		mType = "gauge"
+	} else {
+		_, ok := v.(counter)
+		if ok && isCounter {
+			mType = "counter"
+		} else {
+			return "", errors.New("не удается получить тип метрики")
+		}
 	}
 
 	if mType != "" {
-		val := fmt.Sprint(v)
 		return fmt.Sprintf("%s/%s/%s/%s", baseUrl, mType, mName, val), nil
 	} else {
 		return "", errors.New("не удалось подготовить URL")
