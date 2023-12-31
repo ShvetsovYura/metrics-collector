@@ -3,16 +3,24 @@ package main
 import (
 	"net/http"
 	"strconv"
-	"strings"
+
+	"github.com/go-chi/chi"
 )
 
+type gauge float64
+type counter int64
+
+var allowMetricTypes = []string{`gauge`, `counter`}
+
 type MemStorage struct {
-	metrics map[string]string
+	gauges   map[string]gauge
+	counters map[string]counter
 }
 
-type storage interface {
-	add(int64)
-	change(float64)
+type Stored interface {
+	UpdateGauge(name string, val gauge)
+	AddCounter(name string, val counter)
+	Get(name string) any
 }
 
 func main() {
@@ -31,37 +39,29 @@ func contains(s []string, val string) bool {
 }
 
 func run() error {
-	return http.ListenAndServe(`:8080`, http.HandlerFunc(metricHandler))
+	r := chi.NewRouter()
+	r.Post("/update/{mType}/{mName}/{mVal}", metricUpdateHandle)
+	r.Get("/value/{mType}/{mName}", metricValueHandle)
+	return http.ListenAndServe(`:8080`, r)
 }
 
-func metricHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
+func metricUpdateHandle(w http.ResponseWriter, r *http.Request) {
+	mType := chi.URLParam(r, "mType")
+	mName := chi.URLParam(r, "mName")
+	mVal := chi.URLParam(r, "mVal")
 
-	pathParts := strings.Split(r.URL.Path, "/")
-	if pathParts[1] != "update" {
-		w.WriteHeader(http.StatusNotFound)
-	}
-	parts := pathParts[2:]
-	if len(parts) < 3 {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	mType := parts[0]
-	allowMetricTypes := []string{`gauge`, `counter`}
 	if !contains(allowMetricTypes, mType) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	if mType == "gauge" {
-		_, err := strconv.ParseFloat(parts[2], 64)
+		_, err := strconv.ParseFloat(mVal, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 		}
+
 	}
 	if mType == "counter" {
-		_, err := strconv.ParseInt(parts[2], 10, 64)
+		_, err := strconv.ParseInt(mVal, 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 		}
