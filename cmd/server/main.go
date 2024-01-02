@@ -2,9 +2,8 @@ package main
 
 import (
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi"
+	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 )
 
 type gauge float64
@@ -29,43 +28,9 @@ func main() {
 	}
 }
 
-func contains(s []string, val string) bool {
-	for _, v := range s {
-		if val == v {
-			return true
-		}
-	}
-	return false
-}
-
 func run() error {
-	r := chi.NewRouter()
-	r.Post("/update/{mType}/{mName}/{mVal}", metricUpdateHandle)
-	r.Get("/value/{mType}/{mName}", metricValueHandle)
-	return http.ListenAndServe(`:8080`, r)
-}
-
-func metricUpdateHandle(w http.ResponseWriter, r *http.Request) {
-	mType := chi.URLParam(r, "mType")
-	mName := chi.URLParam(r, "mName")
-	mVal := chi.URLParam(r, "mVal")
-
-	if !contains(allowMetricTypes, mType) {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-	if mType == "gauge" {
-		_, err := strconv.ParseFloat(mVal, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-
-	}
-	if mType == "counter" {
-		_, err := strconv.ParseInt(mVal, 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-	}
-
-	w.WriteHeader(http.StatusOK)
+	return http.ListenAndServe(
+		`:8080`,
+		http.HandlerFunc(handlers.MetricHandler),
+	)
 }
