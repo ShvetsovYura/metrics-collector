@@ -1,102 +1,73 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
-	"reflect"
 	"runtime"
 	"time"
 )
 
-const baseUrl string = "http://localhost:8080/update"
+const baseURL string = "http://localhost:8080/update"
+const poolInterval int = 2
+const reportInterval int = 10
+
+type Sender interface {
+	Send(string)
+}
 
 type gauge float64
 type counter int64
 
-var gaugeFields = []string{
-	"Alloc",
-	"BuckHashSys",
-	"Frees",
-	"GCCPUFraction",
-	"GCSys",
-	"HeapAlloc",
-	"HeapIdle",
-	"HeapInuse",
-	"HeapObjects",
-	"HeapReleased",
-	"HeapSys",
-	"LastGC",
-	"Lookups",
-	"MCacheInuse",
-	"MCacheSys",
-	"MSpanInuse",
-	"MSpanSys",
-	"Mallocs",
-	"NextGC",
-	"NumForcedGC",
-	"NumGC",
-	"OtherSys",
-	"PauseTotalNs",
-	"StackInuse",
-	"StackSys",
-	"Sys",
-	"TotalAlloc",
-	"RandomValue",
+func (g gauge) Send(mName string) {
+	link := fmt.Sprintf("%s/gauge/%s/%f", baseURL, mName, g)
+	sendRequest(link)
 }
 
-var counterFields = []string{
-	"PollCount",
+func (c counter) Send(mName string) {
+	link := fmt.Sprintf("%s/counter/%s/%d", baseURL, mName, c)
+	sendRequest(link)
 }
 
-type Metric struct {
-	Alloc         gauge
-	BuckHashSys   gauge
-	Frees         gauge
-	GCCPUFraction gauge
-	GCSys         gauge
-	HeapAlloc     gauge
-	HeapIdle      gauge
-	HeapInuse     gauge
-	HeapObjects   gauge
-	HeapReleased  gauge
-	HeapSys       gauge
-	LastGC        gauge
-	Lookups       gauge
-	MCacheInuse   gauge
-	MCacheSys     gauge
-	MSpanInuse    gauge
-	MSpanSys      gauge
-	Mallocs       gauge
-	NextGC        gauge
-	NumForcedGC   gauge
-	NumGC         gauge
-	OtherSys      gauge
-	PauseTotalNs  gauge
-	StackInuse    gauge
-	StackSys      gauge
-	Sys           gauge
-	TotalAlloc    gauge
+type Metrics map[string]Sender
 
-	PollCount   counter
-	RandomValue gauge
+func NewMetrics() Metrics {
+	m := make(map[string]Sender, 33)
+	return m
+}
+
+func (m Metrics) SetGauge(name string, v any) {
+	switch t := v.(type) {
+	case uint32:
+		m[name] = gauge(t)
+	case uint64:
+		m[name] = gauge(t)
+	case float64:
+		m[name] = gauge(t)
+	}
+}
+
+func (m Metrics) SetCounter() {
+	val := m["PollCounter"]
+	if val == nil {
+		m["PollCounter"] = counter(1)
+	} else {
+		m["PollCounter"] = val.(counter) + counter(1)
+	}
 }
 
 func main() {
-	var m Metric
+	m := NewMetrics()
 	var elapsed int
 
-	poolInterval := 2
-	reportInterval := 10
-
 	for {
-		if elapsed > 0 && elapsed%poolInterval == 0 {
-			CollectMetrics(&m)
-		}
-
-		if elapsed > 0 && elapsed%reportInterval == 0 {
-			SendMetrics(&m)
+		if elapsed > 0 {
+			if elapsed%poolInterval == 0 {
+				CollectMetrics(&m)
+			}
+			if elapsed%reportInterval == 0 {
+				SendMetrics(m)
+			}
 		}
 
 		time.Sleep(time.Duration(1) * (time.Second))
@@ -104,53 +75,9 @@ func main() {
 	}
 }
 
-func contains(s []string, v string) bool {
-	for _, val := range s {
-		if val == v {
-			return true
-		}
-	}
-	return false
-}
-
-func SendMetrics(m *Metric) {
-	v := reflect.ValueOf(m).Elem()
-
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		fn := v.Type().Field(i).Name
-		// ft := v.Field(i).Type().String()
-		link, err := makeLink(fn, f.Interface())
-		if err == nil {
-			sendRequest(link)
-		}
-	}
-}
-
-func makeLink(mName string, v any) (string, error) {
-	var mType string
-	var val string
-
-	_, ok := v.(gauge)
-	val = fmt.Sprint(v)
-
-	isGauge := contains(gaugeFields, mName)
-	isCounter := contains(counterFields, mName)
-	if ok && isGauge {
-		mType = "gauge"
-	} else {
-		_, ok := v.(counter)
-		if ok && isCounter {
-			mType = "counter"
-		} else {
-			return "", errors.New("не удается получить тип метрики")
-		}
-	}
-
-	if mType != "" {
-		return fmt.Sprintf("%s/%s/%s/%s", baseUrl, mType, mName, val), nil
-	} else {
-		return "", errors.New("не удалось подготовить URL")
+func SendMetrics(m Metrics) {
+	for k, v := range m {
+		v.Send(k)
 	}
 }
 
@@ -162,40 +89,38 @@ func sendRequest(link string) {
 	defer r.Body.Close()
 }
 
-func CollectMetrics(m *Metric) {
+func CollectMetrics(m *Metrics) {
 	var rtm runtime.MemStats
 
 	runtime.ReadMemStats(&rtm)
 
-	m.HeapSys = gauge(rtm.HeapSys)
-	m.Alloc = gauge(rtm.Alloc)
-	m.BuckHashSys = gauge(rtm.BuckHashSys)
-	m.Frees = gauge(rtm.Frees)
-	m.GCCPUFraction = gauge(rtm.GCCPUFraction)
-	m.GCSys = gauge(rtm.GCSys)
-	m.HeapAlloc = gauge(rtm.HeapAlloc)
-	m.HeapIdle = gauge(rtm.HeapIdle)
-	m.HeapInuse = gauge(rtm.HeapInuse)
-	m.HeapObjects = gauge(rtm.HeapObjects)
-	m.HeapReleased = gauge(rtm.HeapReleased)
-	m.HeapSys = gauge(rtm.HeapSys)
-	m.LastGC = gauge(rtm.LastGC)
-	m.Lookups = gauge(rtm.Lookups)
-	m.MCacheInuse = gauge(rtm.MCacheInuse)
-	m.MCacheSys = gauge(rtm.MCacheSys)
-	m.MSpanInuse = gauge(rtm.MSpanInuse)
-	m.MSpanSys = gauge(rtm.MSpanSys)
-	m.Mallocs = gauge(rtm.Mallocs)
-	m.NextGC = gauge(rtm.NextGC)
-	m.NumForcedGC = gauge(rtm.NumForcedGC)
-	m.NumGC = gauge(rtm.NumGC)
-	m.OtherSys = gauge(rtm.OtherSys)
-	m.PauseTotalNs = gauge(rtm.PauseTotalNs)
-	m.StackInuse = gauge(rtm.StackInuse)
-	m.StackSys = gauge(rtm.StackSys)
-	m.Sys = gauge(rtm.Sys)
-	m.TotalAlloc = gauge(rtm.TotalAlloc)
-	m.RandomValue = gauge(rand.Float64())
-	m.PollCount++
-
+	m.SetGauge("HeapSys", rtm.HeapSys)
+	m.SetGauge("Alloc", rtm.Alloc)
+	m.SetGauge("BuckHashSys", rtm.BuckHashSys)
+	m.SetGauge("Frees", rtm.Frees)
+	m.SetGauge("GCCPUFraction", rtm.GCCPUFraction)
+	m.SetGauge("GCSys", rtm.GCSys)
+	m.SetGauge("HeapAlloc", rtm.HeapAlloc)
+	m.SetGauge("HeapIdle", rtm.HeapIdle)
+	m.SetGauge("HeapInuse", rtm.HeapInuse)
+	m.SetGauge("HeapObjects", rtm.HeapObjects)
+	m.SetGauge("HeapReleased", rtm.HeapReleased)
+	m.SetGauge("LastGC", rtm.LastGC)
+	m.SetGauge("Lookups", rtm.Lookups)
+	m.SetGauge("MCacheInuse", rtm.MCacheInuse)
+	m.SetGauge("MCacheSys", rtm.MCacheSys)
+	m.SetGauge("MSpanInuse", rtm.MSpanInuse)
+	m.SetGauge("MSpanSys", rtm.MSpanSys)
+	m.SetGauge("Mallocs", rtm.Mallocs)
+	m.SetGauge("NextGC", rtm.NextGC)
+	m.SetGauge("NumForcedGC", rtm.NumForcedGC)
+	m.SetGauge("NumGC", rtm.NumGC)
+	m.SetGauge("OtherSys", rtm.OtherSys)
+	m.SetGauge("PauseTotalNs", rtm.PauseTotalNs)
+	m.SetGauge("StackInuse", rtm.StackInuse)
+	m.SetGauge("StackSys", rtm.StackSys)
+	m.SetGauge("Sys", rtm.Sys)
+	m.SetGauge("TotalAlloc", rtm.TotalAlloc)
+	m.SetGauge("RandomValue", rand.Float64())
+	m.SetCounter()
 }

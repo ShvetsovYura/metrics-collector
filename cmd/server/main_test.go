@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,7 +75,7 @@ func TestMetricHandlere(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(test.method, test.path, nil)
 			w := httptest.NewRecorder()
-			metricHandler(w, request)
+			handlers.MetricHandler(w, request)
 			res := w.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
 			defer res.Body.Close()
