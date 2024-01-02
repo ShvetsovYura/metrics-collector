@@ -75,7 +75,7 @@ func TestMetricHandlere(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(test.method, test.path, nil)
 			w := httptest.NewRecorder()
-			handlers.MetricHandler(w, request)
+			handlers.MetricUpdateHandle(w, request)
 			res := w.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
 			defer res.Body.Close()

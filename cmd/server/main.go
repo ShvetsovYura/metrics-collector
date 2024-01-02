@@ -4,23 +4,15 @@ import (
 	"net/http"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage"
+	"github.com/go-chi/chi"
 )
 
-type gauge float64
-type counter int64
-
-var allowMetricTypes = []string{`gauge`, `counter`}
-
-type MemStorage struct {
-	gauges   map[string]gauge
-	counters map[string]counter
-}
-
-type Stored interface {
-	UpdateGauge(name string, val gauge)
-	AddCounter(name string, val counter)
-	Get(name string) any
-}
+// type Stored interface {
+// 	Update(name string, val gauge)
+// 	AddCounter(name string, val counter)
+// 	Get(name string) any
+// }
 
 func main() {
 	if err := run(); err != nil {
@@ -29,8 +21,10 @@ func main() {
 }
 
 func run() error {
-	return http.ListenAndServe(
-		`:8080`,
-		http.HandlerFunc(handlers.MetricHandler),
-	)
+	m := storage.MemStorage{}
+	r := chi.NewRouter()
+	r.Get("/", handlers.MetricGetCurrentValuesHandler(&m))
+	r.Post("/update/{mType}/{mName}/{mVal}", handlers.MetricUpdateHandler(&m))
+	r.Get("/value/{mType}/{mName}", handlers.MetricGetValueHandler(&m))
+	return http.ListenAndServe(`:8080`, r)
 }

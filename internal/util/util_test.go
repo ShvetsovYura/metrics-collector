@@ -1,4 +1,4 @@
-package utilu
+package util
 
 import (
 	"testing"

@@ -6,15 +6,13 @@ import (
 	"net/http"
 	"runtime"
 	"time"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/types"
 )
 
 const baseURL string = "http://localhost:8080/update"
 const poolInterval int = 2
 const reportInterval int = 10
-
-type Sender interface {
-	Send(string)
-}
 
 type gauge float64
 type counter int64
@@ -29,10 +27,10 @@ func (c counter) Send(mName string) {
 	sendRequest(link)
 }
 
-type Metrics map[string]Sender
+type Metrics map[string]types.Sender
 
 func NewMetrics() Metrics {
-	m := make(map[string]Sender, 33)
+	m := make(map[string]types.Sender, 33)
 	return m
 }
 
