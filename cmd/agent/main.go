@@ -8,7 +8,9 @@ import (
 	"time"
 )
 
-const baseUrl string = "http://localhost:8080/update"
+const baseURL string = "http://localhost:8080/update"
+const poolInterval int = 2
+const reportInterval int = 10
 
 type Sender interface {
 	Send(string)
@@ -18,15 +20,12 @@ type gauge float64
 type counter int64
 
 func (g gauge) Send(mName string) {
-	link := fmt.Sprintf("%s/gauge/%s/%f", baseUrl, mName, g)
-	fmt.Printf("send gauge %s\n", link)
+	link := fmt.Sprintf("%s/gauge/%s/%f", baseURL, mName, g)
 	sendRequest(link)
 }
 
 func (c counter) Send(mName string) {
-
-	link := fmt.Sprintf("%s/counter/%s/%d", baseUrl, mName, c)
-	fmt.Printf("send counter: %s\n", link)
+	link := fmt.Sprintf("%s/counter/%s/%d", baseURL, mName, c)
 	sendRequest(link)
 }
 
@@ -55,23 +54,20 @@ func (m Metrics) SetCounter() {
 	} else {
 		m["PollCounter"] = val.(counter) + counter(1)
 	}
-
 }
 
 func main() {
 	m := NewMetrics()
 	var elapsed int
 
-	poolInterval := 2
-	reportInterval := 10
-
 	for {
-		if elapsed > 0 && elapsed%poolInterval == 0 {
-			CollectMetrics(&m)
-		}
-
-		if elapsed > 0 && elapsed%reportInterval == 0 {
-			SendMetrics(m)
+		if elapsed > 0 {
+			if elapsed%poolInterval == 0 {
+				CollectMetrics(&m)
+			}
+			if elapsed%reportInterval == 0 {
+				SendMetrics(m)
+			}
 		}
 
 		time.Sleep(time.Duration(1) * (time.Second))
