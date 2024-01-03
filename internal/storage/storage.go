@@ -11,7 +11,7 @@ type Gauge float64
 type Counter int64
 
 func (g Gauge) ToString() string {
-	return fmt.Sprintf("%f", g)
+	return strconv.FormatFloat(float64(g), 'f', 3, 64)
 }
 
 func (c Counter) ToString() string {
@@ -22,17 +22,21 @@ type MemStorage struct {
 	metrics map[string]types.Stringer
 }
 
-func (m *MemStorage) UpdateGauge(name string, val string) {
-	v, err := strconv.ParseFloat(val, 64)
-	if err == nil {
-		m.metrics[name] = Gauge(v)
-	}
+func New() MemStorage {
+	ms := MemStorage{}
+	ms.metrics = make(map[string]types.Stringer, 40)
+	return ms
 }
 
-func (m *MemStorage) UpdateCounter(name string, val string) {
-	v, err := strconv.ParseInt(val, 10, 64)
-	if err == nil {
-		m.metrics[name] = Counter(v)
+func (m *MemStorage) UpdateGauge(name string, val float64) {
+	m.metrics[name] = Gauge(val)
+}
+
+func (m *MemStorage) UpdateCounter(name string, val int64) {
+	if v, ok := m.metrics[name]; ok {
+		m.metrics[name] = v.(Counter) + Counter(val)
+	} else {
+		m.metrics[name] = Counter(val)
 	}
 }
 

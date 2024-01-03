@@ -21,20 +21,20 @@ func MetricUpdateHandler(m *storage.MemStorage) func(w http.ResponseWriter, r *h
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		if mType == "gauge" {
-			_, err := strconv.ParseFloat(mVal, 64)
+			parsedVal, err := strconv.ParseFloat(mVal, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
-				m.UpdateCounter(mName, mVal)
+				m.UpdateGauge(mName, parsedVal)
 			}
 
 		}
 		if mType == "counter" {
-			_, err := strconv.ParseInt(mVal, 10, 64)
+			parsedVal, err := strconv.ParseInt(mVal, 10, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
-				m.UpdateGauge(mName, mVal)
+				m.UpdateCounter(mName, parsedVal)
 			}
 		}
 

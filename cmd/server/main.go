@@ -21,7 +21,7 @@ func main() {
 }
 
 func run() error {
-	m := storage.MemStorage{}
+	m := storage.New()
 	r := chi.NewRouter()
 	r.Get("/", handlers.MetricGetCurrentValuesHandler(&m))
 	r.Post("/update/{mType}/{mName}/{mVal}", handlers.MetricUpdateHandler(&m))
