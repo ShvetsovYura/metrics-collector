@@ -4,7 +4,7 @@ type Gauge float64
 type Counter int64
 
 type Sender interface {
-	Send(string)
+	Send(string, string)
 }
 
 type Stringer interface {

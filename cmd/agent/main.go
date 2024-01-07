@@ -8,22 +8,19 @@ import (
 	"time"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/types"
+	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
-
-const baseURL string = "http://localhost:8080/update"
-const poolInterval int = 2
-const reportInterval int = 10
 
 type gauge float64
 type counter int64
 
-func (g gauge) Send(mName string) {
-	link := fmt.Sprintf("%s/gauge/%s/%f", baseURL, mName, g)
+func (g gauge) Send(mName string, baseURL string) {
+	link := fmt.Sprintf("http://%s/update/gauge/%s/%f", baseURL, mName, g)
 	sendRequest(link)
 }
 
-func (c counter) Send(mName string) {
-	link := fmt.Sprintf("%s/counter/%s/%d", baseURL, mName, c)
+func (c counter) Send(mName string, baseURL string) {
+	link := fmt.Sprintf("http://%s/update/counter/%s/%d", baseURL, mName, c)
 	sendRequest(link)
 }
 
@@ -56,15 +53,17 @@ func (m Metrics) SetCounter() {
 
 func main() {
 	m := NewMetrics()
+	opts := new(util.AgentOptions)
+	opts.ParseArgs()
 	var elapsed int
 
 	for {
 		if elapsed > 0 {
-			if elapsed%poolInterval == 0 {
+			if elapsed%opts.GetPoolInterval() == 0 {
 				CollectMetrics(&m)
 			}
-			if elapsed%reportInterval == 0 {
-				SendMetrics(m)
+			if elapsed%opts.GetReportInterval() == 0 {
+				SendMetrics(m, opts.GetEndpoint())
 			}
 		}
 
@@ -73,9 +72,10 @@ func main() {
 	}
 }
 
-func SendMetrics(m Metrics) {
+func SendMetrics(m Metrics, endpoint string) {
+	fmt.Println("start send metrics")
 	for k, v := range m {
-		v.Send(k)
+		v.Send(k, endpoint)
 	}
 }
 
