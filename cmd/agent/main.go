@@ -55,15 +55,16 @@ func main() {
 	m := NewMetrics()
 	opts := new(util.AgentOptions)
 	opts.ParseArgs()
+	opts.ParseEnvs()
 	var elapsed int
 
 	for {
 		if elapsed > 0 {
-			if elapsed%opts.GetPoolInterval() == 0 {
+			if elapsed%opts.PoolInterval == 0 {
 				CollectMetrics(&m)
 			}
-			if elapsed%opts.GetReportInterval() == 0 {
-				SendMetrics(m, opts.GetEndpoint())
+			if elapsed%opts.ReportInterval == 0 {
+				SendMetrics(m, opts.EndpointAddr)
 			}
 		}
 

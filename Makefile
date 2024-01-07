@@ -20,4 +20,9 @@ i4:
             -binary-path=cmd/server/server \
             -server-port=8081 \
             -source-path=.
-			
+i5:
+	metricstest -test.v -test.run=^TestIteration5$ \
+            -agent-binary-path=cmd/agent/agent \
+            -binary-path=cmd/server/server \
+            -server-port=8081 \
+            -source-path=.

@@ -2,41 +2,39 @@ package util
 
 import (
 	"flag"
+	"fmt"
+
+	"github.com/caarlos0/env/v6"
 )
 
 type AgentOptions struct {
-	endpointAddr   string
-	reportInterval int
-	poolInterval   int
-}
-
-func (o *AgentOptions) GetEndpoint() string {
-	return o.endpointAddr
-}
-func (o *AgentOptions) GetReportInterval() int {
-	return o.reportInterval
-}
-
-func (o *AgentOptions) GetPoolInterval() int {
-	return o.poolInterval
+	EndpointAddr   string `env:"ADDRESS"`
+	ReportInterval int    `env:"REPORT_INTERVAL"`
+	PoolInterval   int    `env:"POLL_INTERVAL"`
 }
 
 type ServerOptions struct {
-	endpointAddr string
+	EndpointAddr string `env:"ADDRESS"`
 }
 
 func (o *AgentOptions) ParseArgs() {
-	flag.StringVar(&o.endpointAddr, "a", "localhost:8080", "server endpoint address")
-	flag.IntVar(&o.poolInterval, "p", 2, "metrics gather interval")
-	flag.IntVar(&o.reportInterval, "r", 10, "interval send metrics to server")
+	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "server endpoint address")
+	flag.IntVar(&o.PoolInterval, "p", 2, "metrics gather interval")
+	flag.IntVar(&o.ReportInterval, "r", 10, "interval send metrics to server")
 	flag.Parse()
+}
+func (o *AgentOptions) ParseEnvs() {
+	env.Parse(o)
 }
 
 func (o *ServerOptions) ParseArgs() {
-	flag.StringVar(&o.endpointAddr, "a", "localhost:8080", "endpoint address")
+	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "endpoint address")
 	flag.Parse()
 }
 
-func (o *ServerOptions) GetEndpoint() string {
-	return o.endpointAddr
+func (o *ServerOptions) ParseEnvs() {
+	if err := env.Parse(o); err != nil {
+		fmt.Println("ERROR ", err)
+	}
+
 }
