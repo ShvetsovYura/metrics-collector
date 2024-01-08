@@ -134,6 +134,7 @@ func TestMetricUpdateGaugeHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, _ := testRequest(t, ts, test.method, test.path)
+			defer resp.Body.Close()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			if !test.want.isErr {
 				v, err := m.GetVal(test.want.mn)
@@ -197,6 +198,7 @@ func TestMetricUpdateCounterHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, _ := testRequest(t, ts, test.method, test.path)
+			defer resp.Body.Close()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			if !test.want.isErr {
 				v, err := m.GetVal(test.want.mn)
@@ -233,6 +235,7 @@ func TestMetricGetValueHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		resp, get := testRequest(t, ts, http.MethodGet, test.url)
+		defer resp.Body.Close()
 		assert.Equal(t, test.status, resp.StatusCode)
 		assert.Equal(t, test.want, get)
 	}
@@ -259,6 +262,7 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		resp, get := testRequest(t, ts, http.MethodGet, test.url)
+		defer resp.Body.Close()
 		assert.Equal(t, test.status, resp.StatusCode)
 		assert.Equal(t, test.want, get)
 	}
