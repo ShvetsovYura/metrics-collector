@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/storage"
+	"github.com/ShvetsovYura/metrics-collector/internal/types"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	"github.com/go-chi/chi"
 )
 
-func MetricUpdateHandler(m *storage.MemStorage) func(w http.ResponseWriter, r *http.Request) {
+func MetricUpdateHandler(m types.Stored) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "mType")
 		mName := chi.URLParam(r, "mName")
@@ -42,13 +42,14 @@ func MetricUpdateHandler(m *storage.MemStorage) func(w http.ResponseWriter, r *h
 	}
 }
 
-func MetricGetValueHandler(m *storage.MemStorage) func(w http.ResponseWriter, r *http.Request) {
+func MetricGetValueHandler(m types.Stored) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "mType")
 		mName := chi.URLParam(r, "mName")
 
 		if !util.Contains([]string{"gauge", "counter"}, mType) {
 			w.WriteHeader(http.StatusNotFound)
+			return
 		}
 
 		v, err := m.GetVal(mName)
@@ -61,7 +62,7 @@ func MetricGetValueHandler(m *storage.MemStorage) func(w http.ResponseWriter, r 
 	}
 }
 
-func MetricGetCurrentValuesHandler(m *storage.MemStorage) func(w http.ResponseWriter, r *http.Request) {
+func MetricGetCurrentValuesHandler(m types.Stored) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, strings.Join(m.ToList(), ", "))

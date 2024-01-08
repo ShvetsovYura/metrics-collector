@@ -7,7 +7,6 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
-	"github.com/go-chi/chi"
 )
 
 func main() {
@@ -23,9 +22,6 @@ func main() {
 
 func run(opts *util.ServerOptions) error {
 	m := storage.New()
-	r := chi.NewRouter()
-	r.Get("/", handlers.MetricGetCurrentValuesHandler(&m))
-	r.Post("/update/{mType}/{mName}/{mVal}", handlers.MetricUpdateHandler(&m))
-	r.Get("/value/{mType}/{mName}", handlers.MetricGetValueHandler(&m))
-	return http.ListenAndServe(opts.EndpointAddr, r)
+	router := handlers.ServerRouter(m)
+	return http.ListenAndServe(opts.EndpointAddr, router)
 }

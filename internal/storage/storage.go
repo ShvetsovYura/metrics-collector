@@ -22,8 +22,8 @@ type MemStorage struct {
 	metrics map[string]types.Stringer
 }
 
-func New() MemStorage {
-	ms := MemStorage{}
+func New() types.Stored {
+	ms := new(MemStorage)
 	ms.metrics = make(map[string]types.Stringer, 40)
 	return ms
 }
