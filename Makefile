@@ -26,3 +26,5 @@ i5:
             -binary-path=cmd/server/server \
             -server-port=8081 \
             -source-path=.
+
+sprint1: build i1 i2 i3 i4 i5
