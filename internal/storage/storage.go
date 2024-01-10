@@ -3,28 +3,30 @@ package storage
 import (
 	"fmt"
 	"strconv"
-
-	"github.com/ShvetsovYura/metrics-collector/internal/types"
 )
 
 type Gauge float64
 type Counter int64
+
+type Metric interface {
+	ToString() string
+}
 
 func (g Gauge) ToString() string {
 	return strconv.FormatFloat(float64(g), 'f', -1, 64)
 }
 
 func (c Counter) ToString() string {
-	return fmt.Sprintf("%d", c)
+	return strconv.FormatInt(int64(c), 10)
 }
 
 type MemStorage struct {
-	metrics map[string]types.Stringer
+	metrics map[string]Metric
 }
 
-func New() types.Stored {
+func NewStorage(metricsCount int) *MemStorage {
 	ms := new(MemStorage)
-	ms.metrics = make(map[string]types.Stringer, 40)
+	ms.metrics = make(map[string]Metric, metricsCount)
 	return ms
 }
 
@@ -40,7 +42,7 @@ func (m *MemStorage) UpdateCounter(name string, val int64) {
 	}
 }
 
-func (m *MemStorage) GetVal(name string) (types.Stringer, error) {
+func (m *MemStorage) GetVal(name string) (Metric, error) {
 	if val, ok := m.metrics[name]; ok {
 		return val, nil
 	} else {
@@ -50,6 +52,7 @@ func (m *MemStorage) GetVal(name string) (types.Stringer, error) {
 
 func (m *MemStorage) ToList() []string {
 	var list []string
+
 	for _, c := range m.metrics {
 		list = append(list, c.ToString())
 	}

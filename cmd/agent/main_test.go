@@ -7,9 +7,9 @@ import (
 )
 
 func TestSetCounter(t *testing.T) {
-	m := NewMetrics()
-	m.SetCounter()
-	m.SetCounter()
+	m := NewMetrics(30)
+	increaseCounter(m)
+	increaseCounter(m)
 
 	assert.Equal(t, counter(2), m["PollCounter"])
 }

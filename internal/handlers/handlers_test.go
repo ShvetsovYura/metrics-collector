@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 	"github.com/ShvetsovYura/metrics-collector/internal/types"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +17,7 @@ import (
 )
 
 type MockStorage struct {
-	Metrics map[string]types.Stringer
+	Metrics map[string]storage.Metric
 }
 
 func (m *MockStorage) UpdateGauge(name string, val float64) {
@@ -30,7 +32,7 @@ func (m *MockStorage) UpdateCounter(name string, val int64) {
 	}
 }
 
-func (m *MockStorage) GetVal(name string) (types.Stringer, error) {
+func (m *MockStorage) GetVal(name string) (storage.Metric, error) {
 	if val, ok := m.Metrics[name]; ok {
 		return val, nil
 	} else {
@@ -72,7 +74,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 }
 func TestMetricUpdateGaugeHandler(t *testing.T) {
 	m := new(MockStorage)
-	m.Metrics = make(map[string]types.Stringer)
+	m.Metrics = make(map[string]storage.Metric)
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -154,7 +156,7 @@ type wantCounter struct {
 
 func TestMetricUpdateCounterHandler(t *testing.T) {
 	m := new(MockStorage)
-	m.Metrics = make(map[string]types.Stringer)
+	m.Metrics = make(map[string]storage.Metric)
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -212,7 +214,7 @@ func TestMetricUpdateCounterHandler(t *testing.T) {
 
 func TestMetricGetValueHandler(t *testing.T) {
 	m := new(MockStorage)
-	m.Metrics = make(map[string]types.Stringer)
+	m.Metrics = make(map[string]storage.Metric)
 	m.Metrics["Alloc"] = types.Gauge(3.1234)
 	m.Metrics["PullCounter"] = types.Counter(12345)
 	m.Metrics["OtherMetric"] = types.Gauge(-123.30)
@@ -243,7 +245,7 @@ func TestMetricGetValueHandler(t *testing.T) {
 
 func TestMetricGetAllValueHandler(t *testing.T) {
 	m := new(MockStorage)
-	m.Metrics = make(map[string]types.Stringer)
+	m.Metrics = make(map[string]storage.Metric)
 	m.Metrics["Alloc"] = types.Gauge(3.1234)
 	m.Metrics["PullCounter"] = types.Counter(12345)
 	m.Metrics["OtherMetric"] = types.Gauge(-123.30)
@@ -264,6 +266,8 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 		resp, get := testRequest(t, ts, http.MethodGet, test.url)
 		defer resp.Body.Close()
 		assert.Equal(t, test.status, resp.StatusCode)
-		assert.Equal(t, test.want, get)
+		for _, v := range strings.Split(test.want, ", ") {
+			assert.Contains(t, get, v)
+		}
 	}
 }

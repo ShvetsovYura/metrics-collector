@@ -1,10 +1,10 @@
-package util
+package main
 
 import (
+	"errors"
 	"flag"
-	"fmt"
 
-	"github.com/caarlos0/env/v6"
+	"github.com/caarlos0/env"
 )
 
 type AgentOptions struct {
@@ -13,28 +13,15 @@ type AgentOptions struct {
 	PoolInterval   int    `env:"POLL_INTERVAL"`
 }
 
-type ServerOptions struct {
-	EndpointAddr string `env:"ADDRESS"`
-}
-
 func (o *AgentOptions) ParseArgs() {
 	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "server endpoint address")
 	flag.IntVar(&o.PoolInterval, "p", 2, "metrics gather interval")
 	flag.IntVar(&o.ReportInterval, "r", 10, "interval send metrics to server")
 	flag.Parse()
 }
-func (o *AgentOptions) ParseEnvs() {
-	env.Parse(o)
-}
-
-func (o *ServerOptions) ParseArgs() {
-	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "endpoint address")
-	flag.Parse()
-}
-
-func (o *ServerOptions) ParseEnvs() {
+func (o *AgentOptions) ParseEnvs() error {
 	if err := env.Parse(o); err != nil {
-		fmt.Println("ERROR ", err)
+		return errors.New("failed to parse agent env")
 	}
-
+	return nil
 }
