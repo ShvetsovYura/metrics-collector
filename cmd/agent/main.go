@@ -2,14 +2,21 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
 	"time"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/types"
-	"github.com/ShvetsovYura/metrics-collector/internal/util"
+	"golang.org/x/exp/constraints"
 )
+
+const metiricsCount int = 40
+
+type Sender interface {
+	Send(string, string)
+}
+type Metrics map[string]Sender
 
 type gauge float64
 type counter int64
@@ -24,44 +31,35 @@ func (c counter) Send(mName string, baseURL string) {
 	sendRequest(link)
 }
 
-type Metrics map[string]types.Sender
-
-func NewMetrics() Metrics {
-	m := make(map[string]types.Sender, 33)
+func NewMetrics(metiricsCount int) Metrics {
+	m := make(map[string]Sender, metiricsCount)
+	m["PollCounter"] = counter(0)
 	return m
 }
 
-func (m Metrics) SetGauge(name string, v any) {
-	switch t := v.(type) {
-	case uint32:
-		m[name] = gauge(t)
-	case uint64:
-		m[name] = gauge(t)
-	case float64:
-		m[name] = gauge(t)
-	}
+func setGauge[Numeric constraints.Float | constraints.Integer](metrics Metrics, name string, v Numeric) {
+	metrics[name] = gauge(v)
 }
 
-func (m Metrics) SetCounter() {
+func increaseCounter(m Metrics) {
 	val := m["PollCounter"]
-	if val == nil {
-		m["PollCounter"] = counter(1)
-	} else {
-		m["PollCounter"] = val.(counter) + counter(1)
-	}
+	m["PollCounter"] = val.(counter) + counter(1)
 }
 
 func main() {
-	m := NewMetrics()
-	opts := new(util.AgentOptions)
+	m := NewMetrics(metiricsCount)
+	opts := new(AgentOptions)
 	opts.ParseArgs()
-	opts.ParseEnvs()
+	if err := opts.ParseEnvs(); err != nil {
+		log.Fatal(err.Error())
+	}
+
 	var elapsed int
 
 	for {
 		if elapsed > 0 {
 			if elapsed%opts.PoolInterval == 0 {
-				CollectMetrics(&m)
+				CollectMetrics(m)
 			}
 			if elapsed%opts.ReportInterval == 0 {
 				SendMetrics(m, opts.EndpointAddr)
@@ -74,52 +72,53 @@ func main() {
 }
 
 func SendMetrics(m Metrics, endpoint string) {
-	fmt.Println("start send metrics")
+	log.Println("start send metrics")
 	for k, v := range m {
 		v.Send(k, endpoint)
 	}
 }
 
-func sendRequest(link string) {
+func sendRequest(link string) error {
 	r, err := http.Post(link, "text/html", nil)
 	if err != nil {
-		return
+		return err
 	}
 	defer r.Body.Close()
+	return nil
 }
 
-func CollectMetrics(m *Metrics) {
+func CollectMetrics(m Metrics) {
 	var rtm runtime.MemStats
 
 	runtime.ReadMemStats(&rtm)
 
-	m.SetGauge("HeapSys", rtm.HeapSys)
-	m.SetGauge("Alloc", rtm.Alloc)
-	m.SetGauge("BuckHashSys", rtm.BuckHashSys)
-	m.SetGauge("Frees", rtm.Frees)
-	m.SetGauge("GCCPUFraction", rtm.GCCPUFraction)
-	m.SetGauge("GCSys", rtm.GCSys)
-	m.SetGauge("HeapAlloc", rtm.HeapAlloc)
-	m.SetGauge("HeapIdle", rtm.HeapIdle)
-	m.SetGauge("HeapInuse", rtm.HeapInuse)
-	m.SetGauge("HeapObjects", rtm.HeapObjects)
-	m.SetGauge("HeapReleased", rtm.HeapReleased)
-	m.SetGauge("LastGC", rtm.LastGC)
-	m.SetGauge("Lookups", rtm.Lookups)
-	m.SetGauge("MCacheInuse", rtm.MCacheInuse)
-	m.SetGauge("MCacheSys", rtm.MCacheSys)
-	m.SetGauge("MSpanInuse", rtm.MSpanInuse)
-	m.SetGauge("MSpanSys", rtm.MSpanSys)
-	m.SetGauge("Mallocs", rtm.Mallocs)
-	m.SetGauge("NextGC", rtm.NextGC)
-	m.SetGauge("NumForcedGC", rtm.NumForcedGC)
-	m.SetGauge("NumGC", rtm.NumGC)
-	m.SetGauge("OtherSys", rtm.OtherSys)
-	m.SetGauge("PauseTotalNs", rtm.PauseTotalNs)
-	m.SetGauge("StackInuse", rtm.StackInuse)
-	m.SetGauge("StackSys", rtm.StackSys)
-	m.SetGauge("Sys", rtm.Sys)
-	m.SetGauge("TotalAlloc", rtm.TotalAlloc)
-	m.SetGauge("RandomValue", rand.Float64())
-	m.SetCounter()
+	setGauge(m, "HeapSys", rtm.HeapSys)
+	setGauge(m, "Alloc", rtm.Alloc)
+	setGauge(m, "BuckHashSys", rtm.BuckHashSys)
+	setGauge(m, "Frees", rtm.Frees)
+	setGauge(m, "GCCPUFraction", rtm.GCCPUFraction)
+	setGauge(m, "GCSys", rtm.GCSys)
+	setGauge(m, "HeapAlloc", rtm.HeapAlloc)
+	setGauge(m, "HeapIdle", rtm.HeapIdle)
+	setGauge(m, "HeapInuse", rtm.HeapInuse)
+	setGauge(m, "HeapObjects", rtm.HeapObjects)
+	setGauge(m, "HeapReleased", rtm.HeapReleased)
+	setGauge(m, "LastGC", rtm.LastGC)
+	setGauge(m, "Lookups", rtm.Lookups)
+	setGauge(m, "MCacheInuse", rtm.MCacheInuse)
+	setGauge(m, "MCacheSys", rtm.MCacheSys)
+	setGauge(m, "MSpanInuse", rtm.MSpanInuse)
+	setGauge(m, "MSpanSys", rtm.MSpanSys)
+	setGauge(m, "Mallocs", rtm.Mallocs)
+	setGauge(m, "NextGC", rtm.NextGC)
+	setGauge(m, "NumForcedGC", rtm.NumForcedGC)
+	setGauge(m, "NumGC", rtm.NumGC)
+	setGauge(m, "OtherSys", rtm.OtherSys)
+	setGauge(m, "PauseTotalNs", rtm.PauseTotalNs)
+	setGauge(m, "StackInuse", rtm.StackInuse)
+	setGauge(m, "StackSys", rtm.StackSys)
+	setGauge(m, "Sys", rtm.Sys)
+	setGauge(m, "TotalAlloc", rtm.TotalAlloc)
+	setGauge(m, "RandomValue", rand.Float64())
+	increaseCounter(m)
 }
