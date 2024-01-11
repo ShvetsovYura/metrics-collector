@@ -8,7 +8,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 )
 
-const metiricsCount int = 40
+const metricsCount int = 40
 
 func main() {
 	opts := new(ServerOptions)
@@ -25,7 +25,7 @@ func main() {
 }
 
 func run(opts *ServerOptions) error {
-	m := storage.NewStorage(metiricsCount)
+	m := storage.NewStorage(metricsCount)
 	router := handlers.ServerRouter(m)
 	return http.ListenAndServe(opts.EndpointAddr, router)
 }

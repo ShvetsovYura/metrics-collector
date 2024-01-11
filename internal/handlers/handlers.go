@@ -11,14 +11,6 @@ import (
 	"github.com/go-chi/chi"
 )
 
-const (
-	metricType  string = "mType"
-	metricName  string = "mName"
-	metricValue string = "mVal"
-	gaugeName   string = "gauge"
-	counterName string = "counter"
-)
-
 type Storage interface {
 	UpdateGauge(name string, val float64)
 	UpdateCounter(name string, val int64)

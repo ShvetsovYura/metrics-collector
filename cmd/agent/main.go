@@ -11,7 +11,7 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-const metiricsCount int = 40
+const metricsCount int = 40
 
 type Sender interface {
 	Send(string, string)
@@ -47,7 +47,7 @@ func increaseCounter(m Metrics) {
 }
 
 func main() {
-	m := NewMetrics(metiricsCount)
+	m := NewMetrics(metricsCount)
 	opts := new(AgentOptions)
 	opts.ParseArgs()
 	if err := opts.ParseEnvs(); err != nil {
