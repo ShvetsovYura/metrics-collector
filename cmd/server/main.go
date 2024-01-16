@@ -2,30 +2,20 @@ package main
 
 import (
 	"log"
-	"net/http"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage"
+	"github.com/ShvetsovYura/metrics-collector/internal/server"
 )
 
-const metricsCount int = 40
-
 func main() {
-	opts := new(ServerOptions)
+	opts := new(server.ServerOptions)
 	opts.ParseArgs()
 
 	if err := opts.ParseEnvs(); err != nil {
 		log.Fatal(err.Error())
 	}
-
+	srv := server.NewServer(opts)
 	log.Printf("Start server with options: %v", &opts)
-	if err := run(opts); err != nil {
+	if err := srv.Run(); err != nil {
 		panic(err)
 	}
-}
-
-func run(opts *ServerOptions) error {
-	m := storage.NewStorage(metricsCount)
-	router := handlers.ServerRouter(m)
-	return http.ListenAndServe(opts.EndpointAddr, router)
 }

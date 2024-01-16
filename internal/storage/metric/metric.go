@@ -1,9 +1,6 @@
-package types
+package metric
 
-import (
-	"fmt"
-	"strconv"
-)
+import "strconv"
 
 type Gauge float64
 type Counter int64
@@ -13,5 +10,5 @@ func (g Gauge) ToString() string {
 }
 
 func (c Counter) ToString() string {
-	return fmt.Sprintf("%d", c)
+	return strconv.FormatInt(int64(c), 10)
 }

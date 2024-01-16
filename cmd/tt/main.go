@@ -15,8 +15,10 @@ func main() {
 	defer stop()
 	wg := sync.WaitGroup{}
 	fmt.Println("start app")
-	go upd(ctx, &wg)
-	go send(ctx, &wg)
+
+	go updateMetrics(ctx, &wg)
+	go sendMetrics(ctx, &wg)
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
@@ -25,12 +27,12 @@ func main() {
 	wg.Wait()
 }
 
-func upd(ctx context.Context, wg *sync.WaitGroup) {
+func updateMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	for {
 		select {
 		case <-time.After(time.Second * 2):
-			fmt.Println("get metrics")
+			fmt.Println("update")
 		case <-ctx.Done():
 			fmt.Println("upd def")
 			wg.Done()
@@ -38,13 +40,13 @@ func upd(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func send(ctx context.Context, wg *sync.WaitGroup) {
+func sendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	for {
 
 		select {
 		case <-time.After(time.Second * 10):
-			fmt.Println("send metrics")
+			fmt.Println("send")
 		case <-ctx.Done():
 			fmt.Println("send def")
 			wg.Done()

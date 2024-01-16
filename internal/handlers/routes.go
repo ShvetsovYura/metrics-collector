@@ -6,10 +6,10 @@ import (
 	"github.com/go-chi/chi"
 )
 
-func ServerRouter(m Storage) chi.Router {
+func ServerRouter(s Storage) chi.Router {
 	r := chi.NewRouter()
-	r.Get("/", MetricGetCurrentValuesHandler(m))
-	r.Post(fmt.Sprintf("/update/{%s}/{%s}/{%s}", metricType, metricName, metricValue), MetricUpdateHandler(m))
-	r.Get(fmt.Sprintf("/value/{%s}/{%s}", metricType, metricName), MetricGetValueHandler(m))
+	r.Get("/", MetricGetCurrentValuesHandler(s))
+	r.Post(fmt.Sprintf("/update/{%s}/{%s}/{%s}", metricType, metricName, metricValue), MetricUpdateHandler(s))
+	r.Get(fmt.Sprintf("/value/{%s}/{%s}", metricType, metricName), MetricGetValueHandler(s))
 	return r
 }

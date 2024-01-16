@@ -6,16 +6,22 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/storage"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	"github.com/go-chi/chi"
 )
 
 type Storage interface {
-	UpdateGauge(name string, val float64)
-	UpdateCounter(name string, val int64)
-	GetVal(name string) (storage.Metric, error)
+	UpdateGauge(name string, val float64) error
+	UpdateCounter(val int64)
+	GetGauge(name string) (metric.Gauge, error)
+	GetCounter() (metric.Counter, error)
 	ToList() []string
+}
+
+type Store interface {
+	SetGauge(name string, val float64) error
+	SetCounter() error
 }
 
 func MetricUpdateHandler(m Storage) func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +47,7 @@ func MetricUpdateHandler(m Storage) func(w http.ResponseWriter, r *http.Request)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
-				m.UpdateCounter(mName, parsedVal)
+				m.UpdateCounter(parsedVal)
 			}
 		}
 
@@ -59,13 +65,24 @@ func MetricGetValueHandler(m Storage) func(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		v, err := m.GetVal(mName)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			return
+		if mName == gaugeName {
+			v, err := m.GetGauge(mName)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			io.WriteString(w, v.ToString())
+		} else if mName == counterName {
+			v, err := m.GetCounter()
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			io.WriteString(w, v.ToString())
 		}
-		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, v.ToString())
+
 	}
 }
 

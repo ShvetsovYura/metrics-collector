@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,49 +8,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/storage"
-	"github.com/ShvetsovYura/metrics-collector/internal/types"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type MockStorage struct {
-	Metrics map[string]storage.Metric
-}
-
-func (m *MockStorage) UpdateGauge(name string, val float64) {
-	m.Metrics[name] = types.Gauge(val)
-}
-
-func (m *MockStorage) UpdateCounter(name string, val int64) {
-	if v, ok := m.Metrics[name]; ok {
-		m.Metrics[name] = v.(types.Counter) + types.Counter(val)
-	} else {
-		m.Metrics[name] = types.Counter(val)
-	}
-}
-
-func (m *MockStorage) GetVal(name string) (storage.Metric, error) {
-	if val, ok := m.Metrics[name]; ok {
-		return val, nil
-	} else {
-		return nil, fmt.Errorf("NotFound %s", name)
-	}
-}
-
-func (m *MockStorage) ToList() []string {
-	var list []string
-	for _, c := range m.Metrics {
-		list = append(list, c.ToString())
-	}
-	return list
-}
-
 type wantGauge struct {
 	code  int
 	mn    string
-	val   types.Gauge
+	val   metric.Gauge
 	isErr bool
 }
 
@@ -73,8 +40,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 	return resp, string(respBody)
 }
 func TestMetricUpdateGaugeHandler(t *testing.T) {
-	m := new(MockStorage)
-	m.Metrics = make(map[string]storage.Metric)
+	m := memory.NewStorage(40)
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -91,7 +57,7 @@ func TestMetricUpdateGaugeHandler(t *testing.T) {
 			method: http.MethodPost,
 			want: wantGauge{
 				code:  http.StatusOK,
-				val:   types.Gauge(3.4),
+				val:   metric.Gauge(3.4),
 				mn:    "Alloc",
 				isErr: false,
 			},
@@ -139,7 +105,7 @@ func TestMetricUpdateGaugeHandler(t *testing.T) {
 			defer resp.Body.Close()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			if !test.want.isErr {
-				v, err := m.GetVal(test.want.mn)
+				v, err := m.GetGauge(test.want.mn)
 				require.Nil(t, err)
 				assert.Equal(t, test.want.val.ToString(), v.ToString())
 			}
@@ -150,13 +116,12 @@ func TestMetricUpdateGaugeHandler(t *testing.T) {
 type wantCounter struct {
 	code  int
 	mn    string
-	val   types.Counter
+	val   metric.Counter
 	isErr bool
 }
 
 func TestMetricUpdateCounterHandler(t *testing.T) {
-	m := new(MockStorage)
-	m.Metrics = make(map[string]storage.Metric)
+	m := memory.NewStorage(40)
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -174,7 +139,7 @@ func TestMetricUpdateCounterHandler(t *testing.T) {
 			method: http.MethodPost,
 			want: wantCounter{
 				code:  http.StatusOK,
-				val:   types.Counter(3),
+				val:   metric.Counter(3),
 				mn:    "PullCounter",
 				isErr: false,
 			},
@@ -203,7 +168,7 @@ func TestMetricUpdateCounterHandler(t *testing.T) {
 			defer resp.Body.Close()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			if !test.want.isErr {
-				v, err := m.GetVal(test.want.mn)
+				v, err := m.GetGauge(test.want.mn)
 				require.Nil(t, err)
 				assert.Equal(t, test.want.val.ToString(), v.ToString())
 			}
@@ -213,11 +178,10 @@ func TestMetricUpdateCounterHandler(t *testing.T) {
 }
 
 func TestMetricGetValueHandler(t *testing.T) {
-	m := new(MockStorage)
-	m.Metrics = make(map[string]storage.Metric)
-	m.Metrics["Alloc"] = types.Gauge(3.1234)
-	m.Metrics["PullCounter"] = types.Counter(12345)
-	m.Metrics["OtherMetric"] = types.Gauge(-123.30)
+	m := memory.NewStorage(40)
+	m.UpdateGauge("Alloc", 3.1234)
+	m.UpdateCounter(12345)
+	m.UpdateGauge("OtherMetric", -123.30)
 
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
@@ -244,11 +208,10 @@ func TestMetricGetValueHandler(t *testing.T) {
 }
 
 func TestMetricGetAllValueHandler(t *testing.T) {
-	m := new(MockStorage)
-	m.Metrics = make(map[string]storage.Metric)
-	m.Metrics["Alloc"] = types.Gauge(3.1234)
-	m.Metrics["PullCounter"] = types.Counter(12345)
-	m.Metrics["OtherMetric"] = types.Gauge(-123.30)
+	m := memory.NewStorage(40)
+	m.UpdateGauge("Alloc", 3.1234)
+	m.UpdateCounter(12345)
+	m.UpdateGauge("OtherMetric", -123.30)
 
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
