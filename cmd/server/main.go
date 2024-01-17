@@ -1,20 +1,21 @@
 package main
 
 import (
-	"log"
-
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/server"
 )
 
 func main() {
+	logger.InitLogger("debug")
+
 	opts := new(server.ServerOptions)
 	opts.ParseArgs()
 
 	if err := opts.ParseEnvs(); err != nil {
-		log.Fatal(err.Error())
+		logger.Log.Fatal(err.Error())
 	}
 	srv := server.NewServer(opts)
-	log.Printf("Start server with options: %v", &opts)
+	logger.Log.Infof("Start server with options: %v", *opts)
 	if err := srv.Run(); err != nil {
 		panic(err)
 	}

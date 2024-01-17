@@ -24,7 +24,7 @@ type Store interface {
 	SetCounter() error
 }
 
-func MetricUpdateHandler(m Storage) func(w http.ResponseWriter, r *http.Request) {
+func MetricUpdateHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, metricType)
 		mName := chi.URLParam(r, metricName)
@@ -55,7 +55,7 @@ func MetricUpdateHandler(m Storage) func(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func MetricGetValueHandler(m Storage) func(w http.ResponseWriter, r *http.Request) {
+func MetricGetValueHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, metricType)
 		mName := chi.URLParam(r, metricName)
@@ -84,9 +84,10 @@ func MetricGetValueHandler(m Storage) func(w http.ResponseWriter, r *http.Reques
 		}
 
 	}
+
 }
 
-func MetricGetCurrentValuesHandler(m Storage) func(w http.ResponseWriter, r *http.Request) {
+func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, strings.Join(m.ToList(), ", "))
