@@ -12,5 +12,7 @@ func ServerRouter(s Storage) chi.Router {
 	r.Get("/", middlewares.WithLog(MetricGetCurrentValuesHandler(s)))
 	r.Post(fmt.Sprintf("/update/{%s}/{%s}/{%s}", metricType, metricName, metricValue), middlewares.WithLog(MetricUpdateHandler(s)))
 	r.Get(fmt.Sprintf("/value/{%s}/{%s}", metricType, metricName), middlewares.WithLog(MetricGetValueHandler(s)))
+	r.Post("/update", middlewares.WithLog(MetricUpdateHandlerWithBody(s)))
+	r.Post("/value", middlewares.WithLog(MetricGetValueHandlerWithBody(s)))
 	return r
 }

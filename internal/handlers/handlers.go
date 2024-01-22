@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
+
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/ShvetsovYura/metrics-collector/internal/types"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	"github.com/go-chi/chi"
 )
@@ -55,6 +59,50 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 	}
 }
 
+func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var buf bytes.Buffer
+		entity := types.Metrics{}
+
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		if err := json.Unmarshal(buf.Bytes(), &entity); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if !util.Contains([]string{gaugeName, counterName}, entity.MType) {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		if entity.MType == gaugeName {
+			m.UpdateGauge(entity.ID, *entity.Value)
+
+		} else if entity.MType == counterName {
+			m.UpdateCounter(*entity.Delta)
+		}
+		val, err := m.GetGauge(entity.ID)
+		gval := val.GetRawValue()
+		actualVal := types.Metrics{
+			ID:    entity.ID,
+			MType: gaugeName,
+			Value: &gval,
+		}
+		resp, err := json.Marshal(actualVal)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(resp)
+	}
+}
+
 func MetricGetValueHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, metricType)
@@ -81,6 +129,70 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 			}
 			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
+		}
+
+	}
+
+}
+
+func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var buf bytes.Buffer
+		entity := types.Metrics{}
+		_, err := buf.ReadFrom(r.Body)
+		defer r.Body.Close()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		if err := json.Unmarshal(buf.Bytes(), &entity); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		if !util.Contains([]string{gaugeName, counterName}, entity.MType) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if entity.MType == gaugeName {
+			v, err := m.GetGauge(entity.ID)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			v1 := v.GetRawValue()
+			val, err := json.Marshal(types.Metrics{
+				ID:    entity.ID,
+				MType: entity.MType,
+				Value: &v1,
+			})
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(val)
+		} else if entity.MType == counterName {
+			v, err := m.GetCounter()
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			v1 := v.GetRawValue()
+			val, err := json.Marshal(types.Metrics{
+				ID:    "PollCounter",
+				MType: entity.MType,
+				Delta: &v1,
+			})
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(val)
 		}
 
 	}
