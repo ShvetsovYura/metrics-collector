@@ -1,8 +1,11 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/types"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
@@ -20,11 +23,29 @@ func NewMetrics(initSize int) metrics {
 }
 
 func (g gauge) Send(mName string, baseURL string) {
-	link := fmt.Sprintf("http://%s/update/gauge/%s/%f", baseURL, mName, g)
-	util.SendRequest(link)
+	var buf bytes.Buffer
+	link := fmt.Sprintf("http://%s/update", baseURL)
+	val := float64(g)
+	data, _ := json.Marshal(types.Metrics{
+		ID:    mName,
+		MType: "gauge",
+		Value: &val,
+	})
+	buf.Read(data)
+	util.SendRequest(link, "application/json", &buf)
 }
 
 func (c counter) Send(mName string, baseURL string) {
-	link := fmt.Sprintf("http://%s/update/counter/%s/%d", baseURL, mName, c)
-	util.SendRequest(link)
+	var buf bytes.Buffer
+
+	link := fmt.Sprintf("http://%s/update", baseURL)
+	val := int64(c)
+	data, _ := json.Marshal(types.Metrics{
+		ID:    "PollCounter",
+		MType: "counter",
+		Delta: &val,
+	})
+	buf.Read(data)
+	util.SendRequest(link, "application/json", &buf)
+
 }

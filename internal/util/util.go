@@ -1,6 +1,9 @@
 package util
 
-import "net/http"
+import (
+	"io"
+	"net/http"
+)
 
 func Contains(s []string, v string) bool {
 	for _, val := range s {
@@ -11,8 +14,8 @@ func Contains(s []string, v string) bool {
 	return false
 }
 
-func SendRequest(link string) error {
-	r, err := http.Post(link, "text/html", nil)
+func SendRequest(link string, contentType string, body io.Reader) error {
+	r, err := http.Post(link, contentType, body) // "text/html"
 	if err != nil {
 		return err
 	}
