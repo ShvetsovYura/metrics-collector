@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 
 	"io"
 	"net/http"
@@ -60,11 +59,12 @@ type Store interface {
 
 func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// var buf bytes.Buffer
 		entity := types.Metrics{}
 
-		// _, err := buf.ReadFrom(r.Body)
 		b, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
+
+		w.Header().Set("Content-Type", "application/json")
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -75,29 +75,30 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer r.Body.Close()
 
 		if !util.Contains([]string{gaugeName, counterName}, entity.MType) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
+
 		if entity.MType == gaugeName {
 			m.UpdateGauge(entity.ID, *entity.Value)
 
 		} else if entity.MType == counterName {
 			m.UpdateCounter(*entity.Delta)
 		}
+
 		val, err := m.GetGauge(entity.ID)
 		actualVal := types.Metrics{
 			ID:    entity.ID,
 			MType: gaugeName,
 			Value: val.GetRawValue(),
 		}
+
 		resp, err := json.Marshal(actualVal)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
 	}
@@ -139,6 +140,8 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		entity := types.Metrics{}
+		var answer []byte
+
 		_, err := buf.ReadFrom(r.Body)
 		defer r.Body.Close()
 		w.Header().Set("Content-Type", "application/json")
@@ -157,51 +160,34 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 		}
 
 		if entity.MType == gaugeName {
-			v, err := m.GetGauge(entity.ID)
-
-			if err != nil {
-				fmt.Println(entity)
-				fmt.Println(err.Error())
-				val, _ := json.Marshal(types.Metrics{
-					ID:    entity.ID,
-					MType: "gauge",
-					Value: v.GetRawValue(),
-				})
-				w.WriteHeader(http.StatusOK)
-				w.Write((val))
-				return
-			}
+			v, _ := m.GetGauge(entity.ID)
 
 			val, err := json.Marshal(types.Metrics{
 				ID:    entity.ID,
-				MType: "gauge",
+				MType: gaugeName,
 				Value: v.GetRawValue(),
 			})
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
-			w.Write(val)
+			answer = val
 		} else if entity.MType == counterName {
-			v, err := m.GetCounter()
-			if err != nil {
-				w.WriteHeader(http.StatusNotImplemented)
-				return
-			}
+			v, _ := m.GetCounter()
 			val, err := json.Marshal(types.Metrics{
 				ID:    "PollCounter",
-				MType: "counter",
+				MType: counterName,
 				Delta: v.GetRawValue(),
 			})
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
-			w.Write(val)
+			answer = val
 		}
 
+		w.WriteHeader(http.StatusOK)
+		w.Write(answer)
 	}
 
 }
