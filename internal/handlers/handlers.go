@@ -3,16 +3,15 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/types"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
-	"github.com/go-chi/chi"
 )
 
 type Storage interface {
@@ -28,53 +27,55 @@ type Store interface {
 	SetCounter() error
 }
 
-func MetricUpdateHandler(m Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		mType := chi.URLParam(r, metricType)
-		mName := chi.URLParam(r, metricName)
-		mVal := chi.URLParam(r, metricValue)
+// func MetricUpdateHandler(m Storage) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		mType := chi.URLParam(r, metricType)
+// 		mName := chi.URLParam(r, metricName)
+// 		mVal := chi.URLParam(r, metricValue)
 
-		if !util.Contains([]string{gaugeName, counterName}, mType) {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-		if mType == gaugeName {
-			parsedVal, err := strconv.ParseFloat(mVal, 64)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-			} else {
-				m.UpdateGauge(mName, parsedVal)
-			}
+// 		if !util.Contains([]string{gaugeName, counterName}, mType) {
+// 			w.WriteHeader(http.StatusBadRequest)
+// 		}
+// 		if mType == gaugeName {
+// 			parsedVal, err := strconv.ParseFloat(mVal, 64)
+// 			if err != nil {
+// 				w.WriteHeader(http.StatusBadRequest)
+// 			} else {
+// 				m.UpdateGauge(mName, parsedVal)
+// 			}
 
-		}
-		if mType == counterName {
-			parsedVal, err := strconv.ParseInt(mVal, 10, 64)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-			} else {
-				m.UpdateCounter(parsedVal)
-			}
-		}
+// 		}
+// 		if mType == counterName {
+// 			parsedVal, err := strconv.ParseInt(mVal, 10, 64)
+// 			if err != nil {
+// 				w.WriteHeader(http.StatusBadRequest)
+// 			} else {
+// 				m.UpdateCounter(parsedVal)
+// 			}
+// 		}
 
-		w.WriteHeader(http.StatusOK)
-	}
-}
+// 		w.WriteHeader(http.StatusOK)
+// 	}
+// }
 
 func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var buf bytes.Buffer
+		// var buf bytes.Buffer
 		entity := types.Metrics{}
 
-		_, err := buf.ReadFrom(r.Body)
+		// _, err := buf.ReadFrom(r.Body)
+		b, err := io.ReadAll(r.Body)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		defer r.Body.Close()
 
-		if err := json.Unmarshal(buf.Bytes(), &entity); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if err := json.Unmarshal(b, &entity); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		defer r.Body.Close()
 
 		if !util.Contains([]string{gaugeName, counterName}, entity.MType) {
 			w.WriteHeader(http.StatusBadRequest)
@@ -86,11 +87,10 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			m.UpdateCounter(*entity.Delta)
 		}
 		val, err := m.GetGauge(entity.ID)
-		gval := val.GetRawValue()
 		actualVal := types.Metrics{
 			ID:    entity.ID,
 			MType: gaugeName,
-			Value: &gval,
+			Value: val.GetRawValue(),
 		}
 		resp, err := json.Marshal(actualVal)
 		if err != nil {
@@ -103,37 +103,37 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	}
 }
 
-func MetricGetValueHandler(m Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		mType := chi.URLParam(r, metricType)
-		mName := chi.URLParam(r, metricName)
+// func MetricGetValueHandler(m Storage) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		mType := chi.URLParam(r, metricType)
+// 		mName := chi.URLParam(r, metricName)
 
-		if !util.Contains([]string{gaugeName, counterName}, mType) {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
+// 		if !util.Contains([]string{gaugeName, counterName}, mType) {
+// 			w.WriteHeader(http.StatusNotFound)
+// 			return
+// 		}
 
-		if mName == gaugeName {
-			v, err := m.GetGauge(mName)
-			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-			io.WriteString(w, v.ToString())
-		} else if mName == counterName {
-			v, err := m.GetCounter()
-			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-			io.WriteString(w, v.ToString())
-		}
+// 		if mName == gaugeName {
+// 			v, err := m.GetGauge(mName)
+// 			if err != nil {
+// 				w.WriteHeader(http.StatusNotFound)
+// 				return
+// 			}
+// 			w.WriteHeader(http.StatusOK)
+// 			io.WriteString(w, v.ToString())
+// 		} else if mName == counterName {
+// 			v, err := m.GetCounter()
+// 			if err != nil {
+// 				w.WriteHeader(http.StatusNotFound)
+// 				return
+// 			}
+// 			w.WriteHeader(http.StatusOK)
+// 			io.WriteString(w, v.ToString())
+// 		}
 
-	}
+// 	}
 
-}
+// }
 
 func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -142,33 +142,46 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 		_, err := buf.ReadFrom(r.Body)
 		defer r.Body.Close()
 		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
 		if err := json.Unmarshal(buf.Bytes(), &entity); err != nil {
+			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
 		if !util.Contains([]string{gaugeName, counterName}, entity.MType) {
-			w.WriteHeader(http.StatusNotFound)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 
 		if entity.MType == gaugeName {
 			v, err := m.GetGauge(entity.ID)
+
 			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
+				fmt.Println(entity)
+				fmt.Println(err.Error())
+				val, _ := json.Marshal(types.Metrics{
+					ID:    entity.ID,
+					MType: "gauge",
+					Value: v.GetRawValue(),
+				})
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write((val))
 				return
 			}
 
-			v1 := v.GetRawValue()
 			val, err := json.Marshal(types.Metrics{
 				ID:    entity.ID,
-				MType: entity.MType,
-				Value: &v1,
+				MType: "gauge",
+				Value: v.GetRawValue(),
 			})
 			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -177,17 +190,18 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 		} else if entity.MType == counterName {
 			v, err := m.GetCounter()
 			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotImplemented)
 				return
 			}
-			v1 := v.GetRawValue()
 			val, err := json.Marshal(types.Metrics{
 				ID:    "PollCounter",
-				MType: entity.MType,
-				Delta: &v1,
+				MType: "counter",
+				Delta: v.GetRawValue(),
 			})
 			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")

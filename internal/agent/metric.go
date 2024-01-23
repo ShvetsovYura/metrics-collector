@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -23,29 +22,29 @@ func NewMetrics(initSize int) metrics {
 }
 
 func (g gauge) Send(mName string, baseURL string) {
-	var buf bytes.Buffer
-	link := fmt.Sprintf("http://%s/update", baseURL)
+	// fmt.Println("start send gauge", mName)
+	link := fmt.Sprintf("http://%s/update/", baseURL)
 	val := float64(g)
-	data, _ := json.Marshal(types.Metrics{
+	obj := types.Metrics{
 		ID:    mName,
 		MType: "gauge",
 		Value: &val,
-	})
-	buf.Read(data)
-	util.SendRequest(link, "application/json", &buf)
+	}
+	data, _ := json.Marshal(obj)
+
+	util.SendRequest(link, "application/json", data)
 }
 
 func (c counter) Send(mName string, baseURL string) {
-	var buf bytes.Buffer
+	// fmt.Println("start send counter")
 
-	link := fmt.Sprintf("http://%s/update", baseURL)
+	link := fmt.Sprintf("http://%s/update/", baseURL)
 	val := int64(c)
 	data, _ := json.Marshal(types.Metrics{
 		ID:    "PollCounter",
 		MType: "counter",
 		Delta: &val,
 	})
-	buf.Read(data)
-	util.SendRequest(link, "application/json", &buf)
+	util.SendRequest(link, "application/json", data)
 
 }

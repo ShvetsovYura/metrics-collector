@@ -13,6 +13,7 @@ type Metric interface {
 type MemStorage struct {
 	gaugeMetrics  map[string]metric.Gauge
 	counterMetric metric.Counter
+	// mux           sync.Mutex
 }
 
 func NewStorage(metricsCount int) *MemStorage {
@@ -24,15 +25,15 @@ func NewStorage(metricsCount int) *MemStorage {
 }
 
 func (m *MemStorage) UpdateGauge(name string, val float64) error {
-	if _, ok := m.gaugeMetrics[name]; !ok {
-		return fmt.Errorf("key not found %s", name)
-	}
+
 	m.gaugeMetrics[name] = metric.Gauge(val)
 	return nil
 }
 
 func (m *MemStorage) UpdateCounter(val int64) {
+	// m.mux.Lock()
 	m.counterMetric += metric.Counter(val)
+	// m.mux.Unlock()
 }
 
 func (m *MemStorage) GetGauge(name string) (metric.Gauge, error) {

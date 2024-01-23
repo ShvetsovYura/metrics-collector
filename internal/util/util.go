@@ -1,7 +1,7 @@
 package util
 
 import (
-	"io"
+	"bytes"
 	"net/http"
 )
 
@@ -14,11 +14,12 @@ func Contains(s []string, v string) bool {
 	return false
 }
 
-func SendRequest(link string, contentType string, body io.Reader) error {
-	r, err := http.Post(link, contentType, body) // "text/html"
+func SendRequest(link string, contentType string, body []byte) error {
+	reader := bytes.NewReader(body)
+	resp, err := http.Post(link, contentType, reader)
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
+	defer resp.Body.Close()
 	return nil
 }

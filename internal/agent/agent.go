@@ -1,13 +1,12 @@
 package agent
 
 import (
-	"context"
 	"log"
 	"math/rand"
 	"runtime"
-	"sync"
 	"time"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 	"golang.org/x/exp/constraints"
 )
@@ -24,38 +23,24 @@ func NewAgent(store *memory.MemStorage, options *AgentOptions) *Agent {
 	}
 }
 
-func (a Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
-	go a.UpdateMetricsTask(ctx, wg)
-	go a.SendMetricsTask(ctx, wg)
+func (a *Agent) Run() {
+	collectTicker := time.NewTicker(time.Duration(a.options.PoolInterval) * time.Second)
+	defer collectTicker.Stop()
+	sendTicker := time.NewTicker(time.Duration(a.options.ReportInterval) * time.Second)
+	defer sendTicker.Stop()
 
-}
-
-func (a Agent) UpdateMetricsTask(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
 	for {
 		select {
-		case <-time.After(time.Second * time.Duration(a.options.PoolInterval)):
+		case <-collectTicker.C:
 			a.collectMetrics()
-		case <-ctx.Done():
-			wg.Done()
-		}
-	}
-}
-
-func (a Agent) SendMetricsTask(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	for {
-
-		select {
-		case <-time.After(time.Second * time.Duration(a.options.ReportInterval)):
+		case <-sendTicker.C:
 			a.sendMetrics()
-		case <-ctx.Done():
-			wg.Done()
 		}
 	}
+
 }
 
-func (a Agent) sendMetrics() {
+func (a *Agent) sendMetrics() {
 	log.Println("start send metrics")
 	for k, v := range a.metrics {
 		v.Send(k, a.options.EndpointAddr)
@@ -64,6 +49,7 @@ func (a Agent) sendMetrics() {
 
 func setGauge[Numeric constraints.Float | constraints.Integer](m metrics, name string, v Numeric) {
 	m[name] = gauge(v)
+	logger.Log.Infof("name: %s val: %v input: %v", name, m[name], v)
 }
 
 func (a *Agent) setCounter() error {
