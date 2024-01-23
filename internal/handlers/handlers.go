@@ -141,18 +141,17 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 		entity := types.Metrics{}
 		_, err := buf.ReadFrom(r.Body)
 		defer r.Body.Close()
+		w.Header().Set("Content-Type", "application/json")
+
 		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
 		if err := json.Unmarshal(buf.Bytes(), &entity); err != nil {
-			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
 		if !util.Contains([]string{gaugeName, counterName}, entity.MType) {
-			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -168,7 +167,6 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 					MType: "gauge",
 					Value: v.GetRawValue(),
 				})
-				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				w.Write((val))
 				return
@@ -180,17 +178,14 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 				Value: v.GetRawValue(),
 			})
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write(val)
 		} else if entity.MType == counterName {
 			v, err := m.GetCounter()
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusNotImplemented)
 				return
 			}
@@ -200,11 +195,9 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 				Delta: v.GetRawValue(),
 			})
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write(val)
 		}
