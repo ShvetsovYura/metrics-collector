@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/types"
-	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
 type Sender interface {
@@ -32,12 +31,10 @@ func (g gauge) Send(mName string, baseURL string) {
 	}
 	data, _ := json.Marshal(obj)
 
-	util.SendRequest(link, "application/json", data)
+	sendMetric(data, link, "application/json")
 }
 
 func (c counter) Send(mName string, baseURL string) {
-	// fmt.Println("start send counter")
-
 	link := fmt.Sprintf("http://%s/update/", baseURL)
 	val := int64(c)
 	data, _ := json.Marshal(types.Metrics{
@@ -45,6 +42,6 @@ func (c counter) Send(mName string, baseURL string) {
 		MType: "counter",
 		Delta: &val,
 	})
-	util.SendRequest(link, "application/json", data)
+	sendMetric(data, link, "application/json")
 
 }

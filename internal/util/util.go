@@ -15,6 +15,7 @@ func Contains(s []string, v string) bool {
 }
 
 func SendRequest(link string, contentType string, body []byte) error {
+
 	reader := bytes.NewReader(body)
 	resp, err := http.Post(link, contentType, reader)
 	if err != nil {
