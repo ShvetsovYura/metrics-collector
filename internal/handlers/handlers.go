@@ -194,6 +194,7 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 
 func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, strings.Join(m.ToList(), ", "))
 	}

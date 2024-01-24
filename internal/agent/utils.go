@@ -3,19 +3,31 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
+	"io"
 	"net/http"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
 func sendMetric(data []byte, link string, contentType string) error {
 	var buf bytes.Buffer
-	gzw := gzip.NewWriter(&buf)
+	var writer io.Writer
+	if util.Contains([]string{"application/json", "text/html"}, contentType) {
+		fmt.Println("agent compress", contentType)
+		gzw := gzip.NewWriter(&buf)
 
-	_, err := gzw.Write(data)
-	if err != nil {
-		return err
+		_, err := gzw.Write(data)
+		if err != nil {
+			return err
+		}
+
+		gzw.Close()
+
+	} else {
+		writer = io.Writer(&buf)
+		writer.Write(data)
 	}
-
-	gzw.Close()
 
 	req, err := http.NewRequest("POST", link, &buf)
 	if err != nil {
@@ -24,7 +36,8 @@ func sendMetric(data []byte, link string, contentType string) error {
 
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", contentType)
+	req.Header.Add("Accept-Encoding", "gzip")
 	client := http.Client{}
-	client.Do(req)
-	return nil
+	_, err1 := client.Do(req)
+	return err1
 }

@@ -69,13 +69,19 @@ func (c *compressReader) Close() error {
 func WithGzip(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var origWriter http.ResponseWriter = w
+		//contentType := r.Header.Get("Content-Type")
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
 		if supportsGzip {
+			// так не прохдят тесты
+			//&& (strings.Contains(contentType, "application/json") || strings.Contains(contentType, "text/html")) {
 			cw := newComporessWriter(w)
 			origWriter = cw
+
 			defer cw.Close()
 		}
+
+		// распаковка входящих сжатых данных
 		contentEncoding := r.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
 		if sendsGzip {
