@@ -45,6 +45,7 @@ func (s *Server) Run() error {
 		Handler: router,
 	}
 	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
+	// https://habr.com/ru/articles/771626/
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
 	defer stop()
 

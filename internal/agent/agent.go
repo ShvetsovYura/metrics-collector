@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 	"golang.org/x/exp/constraints"
 )
 
@@ -15,9 +14,9 @@ type Agent struct {
 	options *AgentOptions
 }
 
-func NewAgent(store *memory.MemStorage, options *AgentOptions) *Agent {
+func NewAgent(metricsCount int, options *AgentOptions) *Agent {
 	return &Agent{
-		metrics: NewMetrics(40),
+		metrics: NewMetrics(metricsCount),
 		options: options,
 	}
 }

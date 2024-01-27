@@ -27,37 +27,6 @@ type Store interface {
 	SetCounter() error
 }
 
-// func MetricUpdateHandler(m Storage) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		mType := chi.URLParam(r, metricType)
-// 		mName := chi.URLParam(r, metricName)
-// 		mVal := chi.URLParam(r, metricValue)
-
-// 		if !util.Contains([]string{gaugeName, counterName}, mType) {
-// 			w.WriteHeader(http.StatusBadRequest)
-// 		}
-// 		if mType == gaugeName {
-// 			parsedVal, err := strconv.ParseFloat(mVal, 64)
-// 			if err != nil {
-// 				w.WriteHeader(http.StatusBadRequest)
-// 			} else {
-// 				m.UpdateGauge(mName, parsedVal)
-// 			}
-
-// 		}
-// 		if mType == counterName {
-// 			parsedVal, err := strconv.ParseInt(mVal, 10, 64)
-// 			if err != nil {
-// 				w.WriteHeader(http.StatusBadRequest)
-// 			} else {
-// 				m.UpdateCounter(parsedVal)
-// 			}
-// 		}
-
-// 		w.WriteHeader(http.StatusOK)
-// 	}
-// }
-
 func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		entity := types.Metrics{}
@@ -105,38 +74,6 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		w.Write(resp)
 	}
 }
-
-// func MetricGetValueHandler(m Storage) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		mType := chi.URLParam(r, metricType)
-// 		mName := chi.URLParam(r, metricName)
-
-// 		if !util.Contains([]string{gaugeName, counterName}, mType) {
-// 			w.WriteHeader(http.StatusNotFound)
-// 			return
-// 		}
-
-// 		if mName == gaugeName {
-// 			v, err := m.GetGauge(mName)
-// 			if err != nil {
-// 				w.WriteHeader(http.StatusNotFound)
-// 				return
-// 			}
-// 			w.WriteHeader(http.StatusOK)
-// 			io.WriteString(w, v.ToString())
-// 		} else if mName == counterName {
-// 			v, err := m.GetCounter()
-// 			if err != nil {
-// 				w.WriteHeader(http.StatusNotFound)
-// 				return
-// 			}
-// 			w.WriteHeader(http.StatusOK)
-// 			io.WriteString(w, v.ToString())
-// 		}
-
-// 	}
-
-// }
 
 func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

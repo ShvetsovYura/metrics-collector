@@ -5,9 +5,9 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal/agent"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 )
+
+const metricsCount int = 40
 
 func main() {
 	logger.InitLogger("info")
@@ -16,9 +16,8 @@ func main() {
 	if err := opts.ParseEnvs(); err != nil {
 		log.Fatal(err.Error())
 	}
-	fs := file.NewFileStorage("mem.txt")
-	storage := memory.NewStorage(40, fs, true)
-	a := agent.NewAgent(storage, opts)
+
+	a := agent.NewAgent(metricsCount, opts)
 
 	logger.Log.Info("Start agent app")
 	a.Run()
