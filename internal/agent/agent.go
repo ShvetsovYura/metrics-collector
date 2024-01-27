@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"log"
 	"math/rand"
 	"runtime"
 	"time"
@@ -41,7 +40,7 @@ func (a *Agent) Run() {
 }
 
 func (a *Agent) sendMetrics() {
-	log.Println("start send metrics")
+	logger.Log.Info("Start send metrics")
 	for k, v := range a.metrics {
 		v.Send(k, a.options.EndpointAddr)
 	}
@@ -49,7 +48,7 @@ func (a *Agent) sendMetrics() {
 
 func setGauge[Numeric constraints.Float | constraints.Integer](m metrics, name string, v Numeric) {
 	m[name] = gauge(v)
-	logger.Log.Infof("name: %s val: %v input: %v", name, m[name], v)
+	// logger.Log.Infof("name: %s val: %v input: %v", name, m[name], v)
 }
 
 func (a *Agent) setCounter() error {
@@ -92,5 +91,5 @@ func (a *Agent) collectMetrics() {
 	setGauge(a.metrics, "TotalAlloc", rtm.TotalAlloc)
 	setGauge(a.metrics, "RandomValue", rand.Float64())
 	a.setCounter()
-	log.Println("collect metrics success")
+	logger.Log.Info("Success collect metrics")
 }

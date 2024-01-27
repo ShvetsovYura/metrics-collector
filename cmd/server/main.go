@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	logger.InitLogger("debug")
+	logger.InitLogger("info")
 
 	opts := new(server.ServerOptions)
 	opts.ParseArgs()

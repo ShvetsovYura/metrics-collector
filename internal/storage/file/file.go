@@ -6,9 +6,9 @@ import (
 	"os"
 )
 
-type dumpItem struct {
-	gauges map[string]float64
-	cnt    int64
+type DumpItem struct {
+	Gauges map[string]float64 `json:"gauges"`
+	Cnt    int64              `json:"counter"`
 }
 
 type FileStorage struct {
@@ -26,9 +26,9 @@ func (fs *FileStorage) Dump(gauges map[string]float64, counter int64) error {
 	}
 	defer f.Close()
 
-	di := dumpItem{gauges: gauges, cnt: counter}
+	di := DumpItem{Gauges: gauges, Cnt: counter}
 
-	data, err := json.Marshal(di)
+	data, err := json.MarshalIndent(di, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -48,12 +48,12 @@ func (fs *FileStorage) Restore() (map[string]float64, int64, error) {
 	if err1 != nil {
 		return nil, 0, err1
 	}
-	di := dumpItem{}
+	di := DumpItem{}
 	err2 := json.Unmarshal(buf.Bytes(), &di)
 	if err2 != nil {
 		return nil, 0, err2
 	}
 
-	return di.gauges, di.cnt, nil
+	return di.Gauges, di.Cnt, nil
 
 }

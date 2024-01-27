@@ -21,7 +21,6 @@ func NewMetrics(initSize int) metrics {
 }
 
 func (g gauge) Send(mName string, baseURL string) {
-	// fmt.Println("start send gauge", mName)
 	link := fmt.Sprintf("http://%s/update/", baseURL)
 	val := float64(g)
 	obj := types.Metrics{

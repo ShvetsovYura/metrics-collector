@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
@@ -74,15 +75,25 @@ func (m *MemStorage) SaveData(s Saver) error {
 	return s.Save(gaugeMetrics, counterMetric)
 }
 
-func (m *MemStorage) SaveToFile() error {
+func (m *MemStorage) SaveNow() {
 	if m.immediatelySave {
-		var g map[string]float64 = make(map[string]float64, len(m.gaugeMetrics))
-		for k, v := range m.gaugeMetrics {
-			g[k] = *v.GetRawValue()
-		}
-		return m.fs.Dump(g, int64(m.counterMetric))
+		m.SaveToFile()
 	}
+}
+
+func (m *MemStorage) SaveToFile() error {
+	logger.Log.Info("Начало сохранения метрик в файл ...")
+	var g map[string]float64 = make(map[string]float64, len(m.gaugeMetrics))
+	for k, v := range m.gaugeMetrics {
+		g[k] = *v.GetRawValue()
+	}
+	err := m.fs.Dump(g, int64(m.counterMetric))
+	if err != nil {
+		return err
+	}
+	logger.Log.Info("Значения метрик успешно сохранены в файл")
 	return nil
+
 }
 
 func (m *MemStorage) RestoreFromFile() error {

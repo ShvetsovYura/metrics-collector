@@ -3,7 +3,6 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -14,7 +13,6 @@ func sendMetric(data []byte, link string, contentType string) error {
 	var buf bytes.Buffer
 	var writer io.Writer
 	if util.Contains([]string{"application/json", "text/html"}, contentType) {
-		fmt.Println("agent compress", contentType)
 		gzw := gzip.NewWriter(&buf)
 
 		_, err := gzw.Write(data)
