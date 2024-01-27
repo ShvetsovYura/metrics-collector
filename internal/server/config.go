@@ -8,11 +8,13 @@ import (
 )
 
 type ServerOptions struct {
-	EndpointAddr string `env:"ADDRESS"`
+	EndpointAddr  string `env:"ADDRESS"`
+	StoreInterval int    `env:"STORE_INTERVAL"`
 }
 
 func (o *ServerOptions) ParseArgs() {
 	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "endpoint address")
+	flag.IntVar(&o.StoreInterval, "i", 300, "interval to store data on file. 0 for immediately")
 	flag.Parse()
 }
 
