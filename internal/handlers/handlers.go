@@ -15,9 +15,10 @@ import (
 
 type Storage interface {
 	UpdateGauge(name string, val float64) error
-	UpdateCounter(val int64)
+	UpdateCounter(val int64) error
 	GetGauge(name string) (metric.Gauge, error)
 	GetCounter() (metric.Counter, error)
+	SaveToFile() error
 	ToList() []string
 }
 
@@ -82,6 +83,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 
 		if entity.MType == gaugeName {
 			m.UpdateGauge(entity.ID, *entity.Value)
+			m.SaveToFile()
 
 		} else if entity.MType == counterName {
 			m.UpdateCounter(*entity.Delta)
