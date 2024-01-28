@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
+	"github.com/go-chi/chi"
 )
 
 type Storage interface {
@@ -26,6 +28,69 @@ type Storage interface {
 type Store interface {
 	SetGauge(name string, val float64) error
 	SetCounter() error
+}
+
+func MetricUpdateHandler(m Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		mType := chi.URLParam(r, metricType)
+		mName := chi.URLParam(r, metricName)
+		mVal := chi.URLParam(r, metricValue)
+
+		if !util.Contains([]string{gaugeName, counterName}, mType) {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		if mType == gaugeName {
+			parsedVal, err := strconv.ParseFloat(mVal, 64)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				m.UpdateGauge(mName, parsedVal)
+			}
+
+		}
+		if mType == counterName {
+			parsedVal, err := strconv.ParseInt(mVal, 10, 64)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				m.UpdateCounter(parsedVal)
+			}
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func MetricGetValueHandler(m Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		mType := chi.URLParam(r, metricType)
+		mName := chi.URLParam(r, metricName)
+
+		if !util.Contains([]string{gaugeName, counterName}, mType) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if mName == gaugeName {
+			v, err := m.GetGauge(mName)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			io.WriteString(w, v.ToString())
+		} else if mName == counterName {
+			v, err := m.GetCounter()
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			io.WriteString(w, v.ToString())
+		}
+
+	}
+
 }
 
 func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
@@ -77,7 +142,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		}
 
 		if marshalErr != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, marshalErr.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
