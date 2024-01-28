@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/types"
+	"github.com/ShvetsovYura/metrics-collector/internal"
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 )
 
 type Sender interface {
@@ -16,14 +17,14 @@ type counter int64
 
 func NewMetrics(initSize int) metrics {
 	m := make(map[string]Sender, initSize)
-	m["PollCounter"] = counter(0)
+	m[internal.CounterMetricFieldName] = counter(0)
 	return m
 }
 
 func (g gauge) Send(mName string, baseURL string) {
 	link := fmt.Sprintf("http://%s/update/", baseURL)
 	val := float64(g)
-	obj := types.Metrics{
+	obj := models.Metrics{
 		ID:    mName,
 		MType: "gauge",
 		Value: &val,
@@ -36,9 +37,9 @@ func (g gauge) Send(mName string, baseURL string) {
 func (c counter) Send(mName string, baseURL string) {
 	link := fmt.Sprintf("http://%s/update/", baseURL)
 	val := int64(c)
-	data, _ := json.Marshal(types.Metrics{
-		ID:    "PollCounter",
-		MType: "counter",
+	data, _ := json.Marshal(models.Metrics{
+		ID:    internal.CounterMetricFieldName,
+		MType: internal.InCounterName,
 		Delta: &val,
 	})
 	sendMetric(data, link, "application/json")

@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ShvetsovYura/metrics-collector/internal"
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
-	"github.com/ShvetsovYura/metrics-collector/internal/types"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
@@ -29,7 +30,7 @@ type Store interface {
 
 func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		entity := types.Metrics{}
+		entity := models.Metrics{}
 
 		b, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
@@ -46,22 +47,22 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			return
 		}
 
-		if !util.Contains([]string{gaugeName, counterName}, entity.MType) {
+		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, entity.MType) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
-		if entity.MType == gaugeName {
+		if entity.MType == internal.InGaugeName {
 			m.UpdateGauge(entity.ID, *entity.Value)
 			m.SaveNow()
 
-		} else if entity.MType == counterName {
+		} else if entity.MType == internal.InCounterName {
 			m.UpdateCounter(*entity.Delta)
 		}
 
 		val, err := m.GetGauge(entity.ID)
-		actualVal := types.Metrics{
+		actualVal := models.Metrics{
 			ID:    entity.ID,
-			MType: gaugeName,
+			MType: internal.InGaugeName,
 			Value: val.GetRawValue(),
 		}
 
@@ -78,7 +79,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
-		entity := types.Metrics{}
+		entity := models.Metrics{}
 		var answer []byte
 
 		_, err := buf.ReadFrom(r.Body)
@@ -93,17 +94,17 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		if !util.Contains([]string{gaugeName, counterName}, entity.MType) {
+		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, entity.MType) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 
-		if entity.MType == gaugeName {
+		if entity.MType == internal.InGaugeName {
 			v, _ := m.GetGauge(entity.ID)
 
-			val, err := json.Marshal(types.Metrics{
+			val, err := json.Marshal(models.Metrics{
 				ID:    entity.ID,
-				MType: gaugeName,
+				MType: internal.InGaugeName,
 				Value: v.GetRawValue(),
 			})
 			if err != nil {
@@ -111,11 +112,11 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 				return
 			}
 			answer = val
-		} else if entity.MType == counterName {
+		} else if entity.MType == internal.InCounterName {
 			v, _ := m.GetCounter()
-			val, err := json.Marshal(types.Metrics{
-				ID:    "PollCounter",
-				MType: counterName,
+			val, err := json.Marshal(models.Metrics{
+				ID:    internal.CounterMetricFieldName,
+				MType: internal.InCounterName,
 				Delta: v.GetRawValue(),
 			})
 			if err != nil {

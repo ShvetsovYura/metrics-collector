@@ -4,19 +4,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/custom"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 )
 
 func WithLog(h http.Handler) http.HandlerFunc {
 	logFunc := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		data := &custom.RespData{
+		data := &models.RespData{
 			StatusCode: 0,
 			Size:       0,
 		}
 
-		lw := custom.LogResponseWriter{
+		lw := models.LogResponseWriter{
 			ResponseWriter: w,
 			Data:           data,
 		}
