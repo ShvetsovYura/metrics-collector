@@ -13,10 +13,11 @@ func TestDump(t *testing.T) {
 		os.Remove(path)
 	}()
 	fs := NewFileStorage(path)
-	var g map[string]float64 = make(map[string]float64, 10)
+	var g = make(map[string]float64, 10)
+	var c = make(map[string]int64, 2)
 	g["Alloc"] = 44.1
 	g["OtherMetric"] = 123
-	var c int64 = 10
+	c["PollCount"] = 10
 	err := fs.Dump(g, c)
 
 	t.Run("test dump & resotre", func(t *testing.T) {

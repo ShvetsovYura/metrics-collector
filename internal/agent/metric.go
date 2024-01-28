@@ -17,7 +17,7 @@ type counter int64
 
 func NewMetrics(initSize int) metrics {
 	m := make(map[string]Sender, initSize)
-	m[internal.CounterMetricFieldName] = counter(0)
+	m[counterMetricFieldName] = counter(0)
 	return m
 }
 
@@ -38,7 +38,7 @@ func (c counter) Send(mName string, baseURL string) {
 	link := fmt.Sprintf("http://%s/update/", baseURL)
 	val := int64(c)
 	data, _ := json.Marshal(models.Metrics{
-		ID:    internal.CounterMetricFieldName,
+		ID:    counterMetricFieldName,
 		MType: internal.InCounterName,
 		Delta: &val,
 	})

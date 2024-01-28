@@ -18,9 +18,9 @@ import (
 
 type Storage interface {
 	UpdateGauge(name string, val float64) error
-	UpdateCounter(val int64) error
+	UpdateCounter(name string, val int64) error
 	GetGauge(name string) (metric.Gauge, error)
-	GetCounter() (metric.Counter, error)
+	GetCounter(name string) (metric.Counter, error)
 	SaveNow()
 	ToList() []string
 }
@@ -53,7 +53,7 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
-				m.UpdateCounter(parsedVal)
+				m.UpdateCounter(mName, parsedVal)
 			}
 		}
 
@@ -71,7 +71,7 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 			return
 		}
 
-		if mName == gaugeName {
+		if mType == gaugeName {
 			v, err := m.GetGauge(mName)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
@@ -79,8 +79,9 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 			}
 			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
-		} else if mName == counterName {
-			v, err := m.GetCounter()
+		} else if mType == counterName {
+
+			v, err := m.GetCounter(mName)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -130,9 +131,9 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			marshalVal, marshalErr = json.Marshal(actualVal)
 
 		} else if entity.MType == internal.InCounterName {
-			m.UpdateCounter(*entity.Delta)
+			m.UpdateCounter(entity.ID, *entity.Delta)
 			m.SaveNow()
-			val, _ := m.GetCounter()
+			val, _ := m.GetCounter(entity.ID)
 			actualVal := models.Metrics{
 				ID:    entity.ID,
 				MType: internal.InCounterName,
@@ -191,9 +192,9 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 			}
 			answer = val
 		} else if entity.MType == internal.InCounterName {
-			v, _ := m.GetCounter()
+			v, _ := m.GetCounter(entity.ID)
 			val, err := json.Marshal(models.Metrics{
-				ID:    internal.CounterMetricFieldName,
+				ID:    entity.ID,
 				MType: internal.InCounterName,
 				Delta: v.GetRawValue(),
 			})

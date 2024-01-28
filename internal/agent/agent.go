@@ -5,7 +5,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"golang.org/x/exp/constraints"
 )
@@ -51,8 +50,8 @@ func setGauge[Numeric constraints.Float | constraints.Integer](m metrics, name s
 }
 
 func (a *Agent) setCounter() error {
-	val := a.metrics[internal.CounterMetricFieldName]
-	a.metrics[internal.CounterMetricFieldName] = val.(counter) + counter(1)
+	val := a.metrics[counterMetricFieldName]
+	a.metrics["PollCount"] = val.(counter) + counter(1)
 	return nil
 }
 
