@@ -73,16 +73,6 @@ func (m *MemStorage) ToList() []string {
 	return list
 }
 
-func (m *MemStorage) SaveData(s Saver) error {
-	var gaugeMetrics map[string]float64 = make(map[string]float64, len(m.gaugeMetrics))
-	var counterMetric int64 = int64(m.counterMetric["PollCount"])
-	for k, v := range m.gaugeMetrics {
-		gaugeMetrics[k] = float64(v)
-	}
-
-	return s.Save(gaugeMetrics, counterMetric)
-}
-
 func (m *MemStorage) SaveNow() {
 	if m.immediatelySave {
 		m.SaveToFile()

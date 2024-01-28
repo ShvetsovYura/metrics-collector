@@ -36,6 +36,10 @@ func sendMetric(data []byte, link string, contentType string) error {
 	req.Header.Add("Content-Type", contentType)
 	req.Header.Add("Accept-Encoding", "gzip")
 	client := http.Client{}
-	_, err1 := client.Do(req)
-	return err1
+	resp, err1 := client.Do(req)
+	if err1 != nil {
+		return err1
+	}
+	defer resp.Body.Close()
+	return nil
 }
