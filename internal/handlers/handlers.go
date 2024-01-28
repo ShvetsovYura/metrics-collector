@@ -43,7 +43,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		}
 
 		if err := json.Unmarshal(b, &entity); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -51,28 +51,37 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
+		var marshalVal []byte
+		var marshalErr error
 		if entity.MType == internal.InGaugeName {
 			m.UpdateGauge(entity.ID, *entity.Value)
 			m.SaveNow()
+			val, _ := m.GetGauge(entity.ID)
+			actualVal := models.Metrics{
+				ID:    entity.ID,
+				MType: internal.InGaugeName,
+				Value: val.GetRawValue(),
+			}
+			marshalVal, marshalErr = json.Marshal(actualVal)
 
 		} else if entity.MType == internal.InCounterName {
 			m.UpdateCounter(*entity.Delta)
+			m.SaveNow()
+			val, _ := m.GetCounter()
+			actualVal := models.Metrics{
+				ID:    entity.ID,
+				MType: internal.InCounterName,
+				Delta: val.GetRawValue(),
+			}
+			marshalVal, marshalErr = json.Marshal(actualVal)
 		}
 
-		val, err := m.GetGauge(entity.ID)
-		actualVal := models.Metrics{
-			ID:    entity.ID,
-			MType: internal.InGaugeName,
-			Value: val.GetRawValue(),
-		}
-
-		resp, err := json.Marshal(actualVal)
-		if err != nil {
+		if marshalErr != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write(resp)
+		w.Write(marshalVal)
 	}
 }
 
@@ -95,12 +104,16 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 		}
 
 		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, entity.MType) {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		if entity.MType == internal.InGaugeName {
-			v, _ := m.GetGauge(entity.ID)
+			v, err := m.GetGauge(entity.ID)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 
 			val, err := json.Marshal(models.Metrics{
 				ID:    entity.ID,

@@ -22,7 +22,7 @@ func NewFileStorage(pathToFile string) *FileStorage {
 func (fs *FileStorage) Dump(gauges map[string]float64, counter int64) error {
 	f, err := os.OpenFile(fs.path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
-		return nil
+		return err
 	}
 	defer f.Close()
 

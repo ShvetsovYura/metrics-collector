@@ -15,10 +15,18 @@ func TestDump(t *testing.T) {
 	fs := NewFileStorage(path)
 	var g map[string]float64 = make(map[string]float64, 10)
 	g["Alloc"] = 44.1
-	err := fs.Dump(g, 10)
+	g["OtherMetric"] = 123
+	var c int64 = 10
+	err := fs.Dump(g, c)
 
-	t.Run("test dump", func(t *testing.T) {
+	t.Run("test dump & resotre", func(t *testing.T) {
 		assert.NoError(t, err)
 		assert.FileExists(t, path)
+		gauges, counter, err := fs.Restore()
+
+		assert.NoError(t, err)
+
+		assert.Equal(t, g, gauges)
+		assert.Equal(t, c, counter)
 	})
 }
