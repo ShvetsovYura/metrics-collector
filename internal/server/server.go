@@ -11,35 +11,33 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 )
 
 type Server struct {
-	metrics     *memory.MemStorage
-	fileStorage *file.FileStorage
-	options     *ServerOptions
+	// metrics     *memory.MemStorage
+	storage *file.FileStorage
+	options *ServerOptions
 }
 
 func NewServer(metricsCount int, opt *ServerOptions) *Server {
-	fileStorage := file.NewFileStorage(opt.FileStoragePath)
 	immediatelySave := false
 	if opt.StoreInterval == 0 {
 		immediatelySave = true
 	}
-	memStorage := memory.NewStorage(metricsCount, fileStorage, immediatelySave)
+	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, immediatelySave)
 	return &Server{
-		metrics:     memStorage,
-		fileStorage: fileStorage,
-		options:     opt,
+		// metrics:     memStorage,
+		storage: fileStorage,
+		options: opt,
 	}
 }
 
 func (s *Server) Run() error {
 	if s.options.Restore {
-		s.metrics.RestoreFromFile()
+		s.storage.RestoreFromFile()
 	}
 
-	router := handlers.ServerRouter(s.metrics)
+	router := handlers.ServerRouter(s.storage)
 	srv := &http.Server{
 		Addr:    s.options.EndpointAddr,
 		Handler: router,
@@ -61,10 +59,10 @@ func (s *Server) Run() error {
 				logger.Log.Info("Останавливаю http сервер...")
 				srv.Shutdown(ctx)
 				logger.Log.Info("http сервер остановлен!")
-				s.metrics.SaveToFile()
+				s.storage.SaveToFile()
 				return
 			case <-ticker.C:
-				s.metrics.SaveToFile()
+				s.storage.SaveToFile()
 			}
 		}
 	}()
