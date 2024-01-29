@@ -13,7 +13,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 )
 
 type Storage interface {
@@ -120,7 +120,6 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		var marshalErr error
 		if entity.MType == internal.InGaugeName {
 			m.SetGauge(entity.ID, *entity.Value)
-			// m.SaveNow()
 			val, _ := m.GetGauge(entity.ID)
 			actualVal := models.Metrics{
 				ID:    entity.ID,
@@ -131,7 +130,6 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 
 		} else if entity.MType == internal.InCounterName {
 			m.SetCounter(entity.ID, *entity.Delta)
-			// m.SaveNow()
 			val, _ := m.GetCounter(entity.ID)
 			actualVal := models.Metrics{
 				ID:    entity.ID,
