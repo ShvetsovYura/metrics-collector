@@ -1,12 +1,16 @@
 module github.com/ShvetsovYura/metrics-collector
 
-go 1.20
+go 1.21
+
+toolchain go1.21.6
 
 require (
 	github.com/caarlos0/env v3.5.0+incompatible // indirect
 	github.com/caarlos0/env/v6 v6.10.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi v1.5.5 // indirect
+	github.com/go-chi/chi/v5 v5.0.11 // indirect
+	github.com/go-chi/httplog/v2 v2.0.9 // indirect
 	github.com/monaco-io/request v1.0.16 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
