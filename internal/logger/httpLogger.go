@@ -6,10 +6,10 @@ import (
 	"github.com/go-chi/httplog/v2"
 )
 
-var HttpLogger *httplog.Logger
+var HTTPLogger *httplog.Logger
 
-func NewHttpLogger() {
-	HttpLogger = httplog.NewLogger("metrics-http-logger", httplog.Options{
+func NewHTTPLogger() {
+	HTTPLogger = httplog.NewLogger("metrics-http-logger", httplog.Options{
 		JSON:             true,
 		LogLevel:         slog.LevelInfo,
 		Concise:          false,

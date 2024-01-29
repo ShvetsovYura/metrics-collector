@@ -11,12 +11,12 @@ import (
 
 func ServerRouter(s Storage) chi.Router {
 
-	logger.NewHttpLogger()
+	logger.NewHTTPLogger()
 
 	r := chi.NewRouter()
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 
-	r.Use(httplog.RequestLogger(logger.HttpLogger))
+	r.Use(httplog.RequestLogger(logger.HTTPLogger))
 
 	r.Get("/", MetricGetCurrentValuesHandler(s))
 	r.Post(fmt.Sprintf("/update/{%s}/{%s}/{%s}", metricType, metricName, metricValue), MetricUpdateHandler(s))
