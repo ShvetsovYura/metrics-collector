@@ -26,7 +26,6 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 	}
 	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, immediatelySave)
 	return &Server{
-		// metrics:     memStorage,
 		storage: fileStorage,
 		options: opt,
 	}
