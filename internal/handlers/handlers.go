@@ -13,15 +13,14 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 )
 
 type Storage interface {
-	UpdateGauge(name string, val float64) error
-	UpdateCounter(name string, val int64) error
+	SetGauge(name string, val float64) error
+	SetCounter(name string, val int64) error
 	GetGauge(name string) (metric.Gauge, error)
 	GetCounter(name string) (metric.Counter, error)
-	SaveNow()
 	ToList() []string
 }
 
@@ -35,7 +34,6 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 		mType := chi.URLParam(r, metricType)
 		mName := chi.URLParam(r, metricName)
 		mVal := chi.URLParam(r, metricValue)
-
 		if !util.Contains([]string{gaugeName, counterName}, mType) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
@@ -44,7 +42,7 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
-				m.UpdateGauge(mName, parsedVal)
+				m.SetGauge(mName, parsedVal)
 			}
 
 		}
@@ -53,7 +51,7 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
-				m.UpdateCounter(mName, parsedVal)
+				m.SetCounter(mName, parsedVal)
 			}
 		}
 
@@ -120,8 +118,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		var marshalVal []byte
 		var marshalErr error
 		if entity.MType == internal.InGaugeName {
-			m.UpdateGauge(entity.ID, *entity.Value)
-			m.SaveNow()
+			m.SetGauge(entity.ID, *entity.Value)
 			val, _ := m.GetGauge(entity.ID)
 			actualVal := models.Metrics{
 				ID:    entity.ID,
@@ -131,8 +128,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			marshalVal, marshalErr = json.Marshal(actualVal)
 
 		} else if entity.MType == internal.InCounterName {
-			m.UpdateCounter(entity.ID, *entity.Delta)
-			m.SaveNow()
+			m.SetCounter(entity.ID, *entity.Delta)
 			val, _ := m.GetCounter(entity.ID)
 			actualVal := models.Metrics{
 				ID:    entity.ID,

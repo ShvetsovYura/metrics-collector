@@ -56,10 +56,9 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, data []
 	return resp, string(respBody)
 }
 
-func TestMetricUpdateGaugeHandler(t *testing.T) {
-	fs := file.NewFileStorage("tt.txt")
-	m := memory.NewStorage(40, fs, false)
-	router := ServerRouter(m)
+func TestMetricSetGaugeHandler(t *testing.T) {
+	fs := file.NewFileStorage("tt.txt", 40, false)
+	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -123,7 +122,7 @@ func TestMetricUpdateGaugeHandler(t *testing.T) {
 			defer resp.Body.Close()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			if !test.want.isErr {
-				v, err := m.GetGauge(test.want.mn)
+				v, err := fs.GetGauge(test.want.mn)
 				require.Nil(t, err)
 				assert.Equal(t, test.want.val.ToString(), v.ToString())
 			}
@@ -138,8 +137,8 @@ type wantCounter struct {
 	isErr bool
 }
 
-func TestMetricUpdateCounterHandler(t *testing.T) {
-	m := memory.NewStorage(40, nil, false)
+func TestMetricSetCounterHandler(t *testing.T) {
+	m := memory.NewMemStorage(40)
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -196,10 +195,10 @@ func TestMetricUpdateCounterHandler(t *testing.T) {
 }
 
 func TestMetricGetValueHandler(t *testing.T) {
-	m := memory.NewStorage(40, nil, false)
-	m.UpdateGauge("Alloc", 3.1234)
-	m.UpdateCounter("PollCount", 12345)
-	m.UpdateGauge("OtherMetric", -123.30)
+	m := memory.NewMemStorage(40)
+	m.SetGauge("Alloc", 3.1234)
+	m.SetCounter("PollCount", 12345)
+	m.SetGauge("OtherMetric", -123.30)
 
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
@@ -226,10 +225,10 @@ func TestMetricGetValueHandler(t *testing.T) {
 }
 
 func TestMetricGetAllValueHandler1(t *testing.T) {
-	m := memory.NewStorage(40, nil, false)
-	m.UpdateGauge("Alloc", 3.1234)
-	m.UpdateCounter("PollCount", 12345)
-	m.UpdateGauge("OtherMetric", -123.30)
+	m := memory.NewMemStorage(40)
+	m.SetGauge("Alloc", 3.1234)
+	m.SetCounter("PollCount", 12345)
+	m.SetGauge("OtherMetric", -123.30)
 
 	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
@@ -256,10 +255,9 @@ func TestMetricGetAllValueHandler1(t *testing.T) {
 func TestMetricUpdateHandler(t *testing.T) {
 	countMetrics := 40
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath)
+	fs := file.NewFileStorage(fsPath, countMetrics, true)
 
-	m := memory.NewStorage(countMetrics, fs, true)
-	router := ServerRouter(m)
+	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
@@ -323,14 +321,13 @@ func TestMetricUpdateHandler(t *testing.T) {
 func TestMetricValueHandler(t *testing.T) {
 	countMetrics := 40
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath)
+	fs := file.NewFileStorage(fsPath, countMetrics, true)
 
-	m := memory.NewStorage(countMetrics, fs, true)
-	m.UpdateGauge("Alloc", 3.1234)
-	m.UpdateCounter("PollCount", 12345)
-	m.UpdateGauge("OtherMetric", -123.30)
+	fs.SetGauge("Alloc", 3.1234)
+	fs.SetCounter("PollCount", 12345)
+	fs.SetGauge("OtherMetric", -123.30)
 
-	router := ServerRouter(m)
+	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
@@ -391,14 +388,13 @@ func TestMetricValueHandler(t *testing.T) {
 func TestMetricGetAllValueHandler(t *testing.T) {
 	countMetrics := 40
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath)
+	fs := file.NewFileStorage(fsPath, countMetrics, true)
 
-	m := memory.NewStorage(countMetrics, fs, true)
-	m.UpdateGauge("Alloc", 3.1234)
-	m.UpdateCounter("PollCount", 12345)
-	m.UpdateGauge("OtherMetric", -123.30)
+	fs.SetGauge("Alloc", 3.1234)
+	fs.SetCounter("PollCount", 12345)
+	fs.SetGauge("OtherMetric", -123.30)
 
-	router := ServerRouter(m)
+	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()

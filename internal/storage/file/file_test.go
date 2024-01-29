@@ -12,7 +12,7 @@ func TestDump(t *testing.T) {
 	defer func() {
 		os.Remove(path)
 	}()
-	fs := NewFileStorage(path)
+	fs := NewFileStorage(path, 40, false)
 	var g = make(map[string]float64, 10)
 	var c = make(map[string]int64, 2)
 	g["Alloc"] = 44.1
