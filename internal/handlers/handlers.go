@@ -44,7 +44,6 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 			} else {
 				m.SetGauge(mName, parsedVal)
 			}
-
 		}
 		if mType == counterName {
 			parsedVal, err := strconv.ParseInt(mVal, 10, 64)
@@ -94,17 +93,18 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 
 func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		entity := models.Metrics{}
+
+		entity := &models.Metrics{}
 
 		b, err := io.ReadAll(r.Body)
-		defer r.Body.Close()
-
-		w.Header().Set("Content-Type", "application/json")
-
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		defer r.Body.Close()
+
+		w.Header().Set("Content-Type", "application/json")
 
 		if err := json.Unmarshal(b, &entity); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -113,6 +113,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 
 		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, entity.MType) {
 			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
 		var marshalVal []byte

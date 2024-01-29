@@ -3,7 +3,6 @@ package memory
 import (
 	"fmt"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
 
@@ -31,7 +30,6 @@ func (m *MemStorage) SetGauge(name string, val float64) error {
 
 func (m *MemStorage) SetCounter(name string, val int64) error {
 	m.counterMetric[name] += metric.Counter(val)
-	logger.Log.Infof("New counter val %v\n", m.counterMetric)
 	return nil
 }
 
