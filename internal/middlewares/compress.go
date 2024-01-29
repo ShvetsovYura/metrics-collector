@@ -69,9 +69,14 @@ func (c *compressReader) Close() error {
 func WithGzip(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var origWriter = w
+
+		// обработка запроса клиента
+		// если клиент поддерживает сжатые gzip'ом данные
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
 		if supportsGzip {
+			// создание нового writer, которые поддерживает сжатие
+			// подмена им оригинального writer (из запроса)
 			cw := newComporessWriter(w)
 			origWriter = cw
 
@@ -79,14 +84,19 @@ func WithGzip(h http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// распаковка входящих сжатых данных
+		// проверка в каком виде клиент прислал данные
 		contentEncoding := r.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
+		// если данные сжаты gzip'ом, то обрабатываем их
 		if sendsGzip {
+			// создание reader для сжатых данных и чтение из оригинального запроса
 			cr, err := newCompressReader(r.Body)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+			// распакованные данные записываются обратно в тело
+			// оригинального запроса
 			r.Body = cr
 			defer cr.Close()
 		}

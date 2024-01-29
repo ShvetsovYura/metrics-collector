@@ -12,10 +12,6 @@ type Metric interface {
 	ToString() string
 }
 
-type Saver interface {
-	Save(map[string]float64, int64) error
-}
-
 type MemStorage struct {
 	gaugeMetrics    map[string]metric.Gauge
 	counterMetric   map[string]metric.Counter
@@ -69,7 +65,6 @@ func (m *MemStorage) ToList() []string {
 	for _, c := range m.counterMetric {
 		list = append(list, c.ToString())
 	}
-	// list = append(list, m.counterMetric.ToString())
 	return list
 }
 
