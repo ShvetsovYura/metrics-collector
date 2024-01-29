@@ -34,7 +34,6 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 		mType := chi.URLParam(r, metricType)
 		mName := chi.URLParam(r, metricName)
 		mVal := chi.URLParam(r, metricValue)
-
 		if !util.Contains([]string{gaugeName, counterName}, mType) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
