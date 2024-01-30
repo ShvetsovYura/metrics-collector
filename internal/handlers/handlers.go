@@ -31,13 +31,13 @@ type Store interface {
 
 func MetricUpdateHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		mType := chi.URLParam(r, metricType)
-		mName := chi.URLParam(r, metricName)
-		mVal := chi.URLParam(r, metricValue)
-		if !util.Contains([]string{gaugeName, counterName}, mType) {
+		mType := chi.URLParam(r, internal.MetricTypePathParam)
+		mName := chi.URLParam(r, internal.MetricNamePathParam)
+		mVal := chi.URLParam(r, internal.MetricValuePathParam)
+		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, mType) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
-		if mType == gaugeName {
+		if mType == internal.InGaugeName {
 			parsedVal, err := strconv.ParseFloat(mVal, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -45,7 +45,7 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 				m.SetGauge(mName, parsedVal)
 			}
 		}
-		if mType == counterName {
+		if mType == internal.InCounterName {
 			parsedVal, err := strconv.ParseInt(mVal, 10, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -60,15 +60,15 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 
 func MetricGetValueHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		mType := chi.URLParam(r, metricType)
-		mName := chi.URLParam(r, metricName)
+		mType := chi.URLParam(r, internal.MetricTypePathParam)
+		mName := chi.URLParam(r, internal.MetricNamePathParam)
 
-		if !util.Contains([]string{gaugeName, counterName}, mType) {
+		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, mType) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		if mType == gaugeName {
+		if mType == internal.InGaugeName {
 			v, err := m.GetGauge(mName)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
@@ -76,7 +76,7 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 			}
 			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
-		} else if mType == counterName {
+		} else if mType == internal.InCounterName {
 
 			v, err := m.GetCounter(mName)
 			if err != nil {
