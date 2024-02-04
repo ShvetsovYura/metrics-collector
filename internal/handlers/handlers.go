@@ -24,37 +24,35 @@ type Storage interface {
 	ToList() []string
 }
 
-type Store interface {
-	SetGauge(name string, val float64) error
-	SetCounter() error
-}
-
 func MetricUpdateHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
 		mName := chi.URLParam(r, internal.MetricNamePathParam)
 		mVal := chi.URLParam(r, internal.MetricValuePathParam)
-		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, mType) {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-		if mType == internal.InGaugeName {
+
+		switch mType {
+		case internal.InGaugeName:
 			parsedVal, err := strconv.ParseFloat(mVal, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-			} else {
-				m.SetGauge(mName, parsedVal)
+				return
 			}
-		}
-		if mType == internal.InCounterName {
+			m.SetGauge(mName, parsedVal)
+
+		case internal.InCounterName:
 			parsedVal, err := strconv.ParseInt(mVal, 10, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-			} else {
-				m.SetCounter(mName, parsedVal)
+				return
 			}
-		}
+			m.SetCounter(mName, parsedVal)
 
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+
+		}
 		w.WriteHeader(http.StatusOK)
+
 	}
 }
 
@@ -63,12 +61,8 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
 		mName := chi.URLParam(r, internal.MetricNamePathParam)
 
-		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, mType) {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		if mType == internal.InGaugeName {
+		switch mType {
+		case internal.InGaugeName:
 			v, err := m.GetGauge(mName)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
@@ -76,8 +70,8 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 			}
 			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
-		} else if mType == internal.InCounterName {
 
+		case internal.InCounterName:
 			v, err := m.GetCounter(mName)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
@@ -85,6 +79,10 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 			}
 			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
+
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			return
 		}
 
 	}
