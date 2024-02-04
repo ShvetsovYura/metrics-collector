@@ -14,6 +14,8 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
 type Storage interface {
@@ -212,4 +214,19 @@ func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, strings.Join(m.ToList(), ", "))
 	}
+}
+
+func DbPingHandler(w http.ResponseWriter, r *http.Request) {
+	db, err := sqlx.Connect("postgres", "user=mc_user dbname=mc_db sslmode=disable password=12345")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	pingErr := db.Ping()
+	if pingErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
