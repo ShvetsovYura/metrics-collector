@@ -223,10 +223,6 @@ func DbPingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pingErr := db.Ping()
-	if pingErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	
 	w.WriteHeader(http.StatusOK)
 }
