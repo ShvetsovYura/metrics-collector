@@ -14,7 +14,6 @@ func main() {
 	if err := opts.ParseEnvs(); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
-
 	srv := server.NewServer(40, opts)
 	logger.Log.Infof("Start server with options: %v", *opts)
 	if err := srv.Run(); err != nil {
