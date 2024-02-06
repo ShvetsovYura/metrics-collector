@@ -8,7 +8,7 @@ import (
 )
 
 type DB struct {
-	db *pgxpool.Pool
+	pool *pgxpool.Pool
 }
 
 func NewDBPool(ctx context.Context, connString string) (*DB, error) {
@@ -17,9 +17,13 @@ func NewDBPool(ctx context.Context, connString string) (*DB, error) {
 		logger.Log.Error(err.Error())
 		return nil, err
 	}
-	return &DB{db: connPool}, nil
+	return &DB{pool: connPool}, nil
 }
 
 func (db *DB) Ping() error {
-	return db.Ping()
+	err := db.pool.Ping(context.Background())
+	if err != nil {
+		return err
+	}
+	return nil
 }

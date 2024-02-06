@@ -10,12 +10,13 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/db"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
 )
 
 type Server struct {
-	// metrics     *memory.MemStorage
 	storage *file.FileStorage
+	dbPool  *db.DB
 	options *ServerOptions
 }
 
@@ -25,8 +26,14 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 		immediatelySave = true
 	}
 	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, immediatelySave)
+	dbCtx := context.Background()
+	dbStorage, err := db.NewDBPool(dbCtx, opt.DbDSN)
+	if err != nil {
+		panic(err)
+	}
 	return &Server{
 		storage: fileStorage,
+		dbPool:  dbStorage,
 		options: opt,
 	}
 }
@@ -36,7 +43,7 @@ func (s *Server) Run() error {
 		s.storage.RestoreFromFile()
 	}
 
-	router := handlers.ServerRouter(s.storage)
+	router := handlers.ServerRouter(s.storage, s.dbPool)
 	srv := &http.Server{
 		Addr:    s.options.EndpointAddr,
 		Handler: router,
