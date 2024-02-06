@@ -27,7 +27,7 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 	}
 	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, immediatelySave)
 	dbCtx := context.Background()
-	dbStorage, err := db.NewDBPool(dbCtx, opt.DbDSN)
+	dbStorage, err := db.NewDBPool(dbCtx, opt.DBDSN)
 	if err != nil {
 		panic(err)
 	}

@@ -12,7 +12,7 @@ type ServerOptions struct {
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
-	DbDSN           string `env:"DATABASE_DSN"`
+	DBDSN           string `env:"DATABASE_DSN"`
 }
 
 func (o *ServerOptions) ParseArgs() {
@@ -20,7 +20,7 @@ func (o *ServerOptions) ParseArgs() {
 	flag.IntVar(&o.StoreInterval, "i", 300, "interval to store data on file. 0 for immediately")
 	flag.StringVar(&o.FileStoragePath, "f", "/tmp/metrics-db.json", "path to save metrics values")
 	flag.BoolVar(&o.Restore, "r", true, "restoring metrics values on start")
-	flag.StringVar(&o.DbDSN, "d", "postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable", "database connection DSN")
+	flag.StringVar(&o.DBDSN, "d", "postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable", "database connection DSN")
 
 	flag.Parse()
 }
