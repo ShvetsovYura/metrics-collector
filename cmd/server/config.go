@@ -9,12 +9,12 @@ import (
 
 type ServerOptions struct {
 	EndpointAddr string `env:"ADDRESS"`
-	DbDSN        string `env:"DATABASE_DSN"`
+	DBDSN        string `env:"DATABASE_DSN"`
 }
 
 func (o *ServerOptions) ParseArgs() {
 	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "endpoint address")
-	flag.StringVar(&o.DbDSN, "d", "", "database connection DSN")
+	flag.StringVar(&o.DBDSN, "d", "", "database connection DSN")
 	flag.Parse()
 }
 

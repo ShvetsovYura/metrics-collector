@@ -216,7 +216,7 @@ func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
 	}
 }
 
-func DbPingHandler(db *db.DB) http.HandlerFunc {
+func DBPingHandler(db *db.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := db.Ping()
 		if err != nil {

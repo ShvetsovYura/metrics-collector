@@ -28,7 +28,7 @@ func ServerRouter(s Storage, db *db.DB) chi.Router {
 	r.Get(fmt.Sprintf("/value/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam), middlewares.WithUnzipRequest(MetricGetValueHandler(s)))
 	r.Post("/update/", middlewares.WithUnzipRequest(MetricUpdateHandlerWithBody(s)))
 	r.Post("/value/", middlewares.WithUnzipRequest(MetricGetValueHandlerWithBody(s)))
-	r.Get("/ping", DbPingHandler(db))
+	r.Get("/ping", DBPingHandler(db))
 
 	return r
 }
