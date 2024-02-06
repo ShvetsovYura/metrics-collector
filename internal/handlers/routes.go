@@ -6,12 +6,13 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/middlewares"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 )
 
-func ServerRouter(s Storage) chi.Router {
+func ServerRouter(s Storage, db *db.DB) chi.Router {
 
 	logger.NewHTTPLogger()
 
@@ -27,6 +28,7 @@ func ServerRouter(s Storage) chi.Router {
 	r.Get(fmt.Sprintf("/value/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam), middlewares.WithUnzipRequest(MetricGetValueHandler(s)))
 	r.Post("/update/", middlewares.WithUnzipRequest(MetricUpdateHandlerWithBody(s)))
 	r.Post("/value/", middlewares.WithUnzipRequest(MetricGetValueHandlerWithBody(s)))
+	r.Get("/ping", DBPingHandler(db))
 
 	return r
 }

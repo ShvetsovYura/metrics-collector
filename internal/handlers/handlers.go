@@ -11,9 +11,11 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/db"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	"github.com/go-chi/chi/v5"
+	_ "github.com/lib/pq"
 )
 
 type Storage interface {
@@ -212,4 +214,17 @@ func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, strings.Join(m.ToList(), ", "))
 	}
+}
+
+func DBPingHandler(db *db.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := db.Ping()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+
 }
