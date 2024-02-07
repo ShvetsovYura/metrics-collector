@@ -28,6 +28,14 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 	} else {
 		targetStorage = dbStorage
 	}
+
+	pingErr := dbStorage.Ping()
+	if pingErr != nil {
+		targetStorage = fileStorage
+	} else {
+		targetStorage = dbStorage
+
+	}
 	return &Server{
 		storage: targetStorage,
 		options: opt,
