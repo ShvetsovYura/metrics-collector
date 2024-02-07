@@ -1,4 +1,4 @@
-package handlers_test
+package handlers
 
 import (
 	"bytes"
@@ -57,7 +57,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, data []
 }
 
 func TestMetricSetGaugeHandler(t *testing.T) {
-	fs := file.NewFileStorage("tt.txt", 40, false)
+	fs := file.NewFileStorage("tt.txt", 40, false, 0)
 	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -128,10 +128,6 @@ func TestMetricSetGaugeHandler(t *testing.T) {
 			}
 		})
 	}
-}
-
-func ServerRouter(fs *file.FileStorage) {
-	panic("unimplemented")
 }
 
 type wantCounter struct {
@@ -259,7 +255,7 @@ func TestMetricGetAllValueHandler1(t *testing.T) {
 func TestMetricUpdateHandler(t *testing.T) {
 	countMetrics := 40
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, countMetrics, true)
+	fs := file.NewFileStorage(fsPath, countMetrics, true, 0)
 
 	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
@@ -325,7 +321,7 @@ func TestMetricUpdateHandler(t *testing.T) {
 func TestMetricValueHandler(t *testing.T) {
 	countMetrics := 40
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, countMetrics, true)
+	fs := file.NewFileStorage(fsPath, countMetrics, true, 0)
 
 	fs.SetGauge("Alloc", 3.1234)
 	fs.SetCounter("PollCount", 12345)
@@ -392,7 +388,7 @@ func TestMetricValueHandler(t *testing.T) {
 func TestMetricGetAllValueHandler(t *testing.T) {
 	countMetrics := 40
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, countMetrics, true)
+	fs := file.NewFileStorage(fsPath, countMetrics, true, 0)
 
 	fs.SetGauge("Alloc", 3.1234)
 	fs.SetCounter("PollCount", 12345)
