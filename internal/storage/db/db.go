@@ -106,7 +106,7 @@ func (db *DBStore) GetGauge(name_ string) (metric.Gauge, error) {
 
 func (db *DBStore) GetGauges() map[string]metric.Gauge {
 	rows, _ := db.pool.Query(context.Background(), "select name, value from gauge")
-	var gauges map[string]metric.Gauge
+	var gauges = make(map[string]metric.Gauge, 100)
 
 	for rows.Next() {
 		var name string
@@ -121,16 +121,14 @@ func (db *DBStore) GetGauges() map[string]metric.Gauge {
 
 func (db *DBStore) GetCounters() map[string]metric.Counter {
 	rows, _ := db.pool.Query(context.Background(), "select name, value from counter")
-	var counters map[string]metric.Counter
+	var counters = make(map[string]metric.Counter, 1)
 
 	for rows.Next() {
 		var name string
 		var value int64
 
 		_ = rows.Scan(&name, &value)
-		// if err != nil {
-		// 	return err
-		// }
+
 		counters[name] = metric.Counter(value)
 	}
 
