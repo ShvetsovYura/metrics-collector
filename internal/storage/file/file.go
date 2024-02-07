@@ -3,6 +3,7 @@ package file
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
@@ -152,5 +153,5 @@ func (fs *FileStorage) Restore() error {
 }
 
 func (fs *FileStorage) Ping() error {
-	return nil
+	return errors.New("It's not db. FileStorage")
 }
