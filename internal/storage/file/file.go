@@ -21,12 +21,22 @@ type FileStorage struct {
 	memStorage  *memory.MemStorage
 }
 
-func NewFileStorage(pathToFile string, metricsCount int, immediatelySave bool) *FileStorage {
-	return &FileStorage{
+func NewFileStorage(pathToFile string, metricsCount int, restore bool, storeInterval int) *FileStorage {
+
+	immediatelySave := false
+	if storeInterval == 0 {
+		immediatelySave = true
+	}
+	s := &FileStorage{
 		path:        pathToFile,
 		immediately: immediatelySave,
 		memStorage:  memory.NewMemStorage(metricsCount),
 	}
+
+	if restore {
+		s.Restore()
+	}
+	return s
 }
 
 func (fs *FileStorage) GetGauge(name string) (metric.Gauge, error) {
@@ -75,7 +85,7 @@ func (fs *FileStorage) Dump(gauges map[string]float64, counters map[string]int64
 	return nil
 }
 
-func (fs *FileStorage) Restore() (map[string]float64, map[string]int64, error) {
+func (fs *FileStorage) RestoreNow() (map[string]float64, map[string]int64, error) {
 	var buf bytes.Buffer
 
 	f, err := os.OpenFile(fs.path, os.O_RDONLY|os.O_CREATE, 0666)
@@ -101,11 +111,11 @@ func (fs *FileStorage) Restore() (map[string]float64, map[string]int64, error) {
 
 func (fs *FileStorage) SaveNow() {
 	if fs.immediately {
-		fs.SaveToFile()
+		fs.Save()
 	}
 }
 
-func (fs *FileStorage) SaveToFile() error {
+func (fs *FileStorage) Save() error {
 	logger.Log.Info("Начало сохранения метрик в файл ...")
 	var g = make(map[string]float64, len(fs.memStorage.GetGauges()))
 	var c = make(map[string]int64, len(fs.memStorage.GetCounters()))
@@ -125,8 +135,8 @@ func (fs *FileStorage) SaveToFile() error {
 
 }
 
-func (fs *FileStorage) RestoreFromFile() error {
-	g, c, err := fs.Restore()
+func (fs *FileStorage) Restore() error {
+	g, c, err := fs.RestoreNow()
 	if err != nil {
 		return err
 	}
@@ -138,5 +148,9 @@ func (fs *FileStorage) RestoreFromFile() error {
 		fs.memStorage.SetCounter(k, v)
 	}
 
+	return nil
+}
+
+func (fs *FileStorage) Ping() error {
 	return nil
 }

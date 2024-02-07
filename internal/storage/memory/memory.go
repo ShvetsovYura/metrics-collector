@@ -68,3 +68,14 @@ func (m *MemStorage) ToList() []string {
 	}
 	return list
 }
+
+func (m *MemStorage) Ping() error {
+	return nil
+}
+
+func (m *MemStorage) Save() error {
+	return nil
+}
+func (m *MemStorage) Restore() error {
+	return nil
+}

@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"bytes"
@@ -58,7 +58,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, data []
 
 func TestMetricSetGaugeHandler(t *testing.T) {
 	fs := file.NewFileStorage("tt.txt", 40, false)
-	router := ServerRouter(fs, nil)
+	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -130,6 +130,10 @@ func TestMetricSetGaugeHandler(t *testing.T) {
 	}
 }
 
+func ServerRouter(fs *file.FileStorage) {
+	panic("unimplemented")
+}
+
 type wantCounter struct {
 	code  int
 	mn    string
@@ -139,7 +143,7 @@ type wantCounter struct {
 
 func TestMetricSetCounterHandler(t *testing.T) {
 	m := memory.NewMemStorage(40)
-	router := ServerRouter(m, nil)
+	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -200,7 +204,7 @@ func TestMetricGetValueHandler(t *testing.T) {
 	m.SetCounter("PollCount", 12345)
 	m.SetGauge("OtherMetric", -123.30)
 
-	router := ServerRouter(m, nil)
+	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -230,7 +234,7 @@ func TestMetricGetAllValueHandler1(t *testing.T) {
 	m.SetCounter("PollCount", 12345)
 	m.SetGauge("OtherMetric", -123.30)
 
-	router := ServerRouter(m, nil)
+	router := ServerRouter(m)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -257,7 +261,7 @@ func TestMetricUpdateHandler(t *testing.T) {
 	fsPath := "/tmp/myFileStorage.txt"
 	fs := file.NewFileStorage(fsPath, countMetrics, true)
 
-	router := ServerRouter(fs, nil)
+	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
@@ -327,7 +331,7 @@ func TestMetricValueHandler(t *testing.T) {
 	fs.SetCounter("PollCount", 12345)
 	fs.SetGauge("OtherMetric", -123.30)
 
-	router := ServerRouter(fs, nil)
+	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
@@ -394,7 +398,7 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 	fs.SetCounter("PollCount", 12345)
 	fs.SetGauge("OtherMetric", -123.30)
 
-	router := ServerRouter(fs, nil)
+	router := ServerRouter(fs)
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
