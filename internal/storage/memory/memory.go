@@ -71,7 +71,7 @@ func (m *MemStorage) ToList() []string {
 }
 
 func (m *MemStorage) Ping() error {
-	return errors.New("It's not db. MemoryStorage")
+	return errors.New("it's not db. memorystorage")
 }
 
 func (m *MemStorage) Save() error {

@@ -21,15 +21,15 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 	connPool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS public.counter
 		(
-			id integer NOT NULL DEFAULT nextval('counter_id_seq'::regclass),
-			name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+			id  serial not null,
+			name character varying(255) NOT NULL,
 			value integer NOT NULL,
 			CONSTRAINT counter_pkey PRIMARY KEY (id)
 		);
 		CREATE TABLE IF NOT EXISTS public.gauge
 		(
-			id integer NOT NULL DEFAULT nextval('counter_id_seq'::regclass),
-			name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+			id serial NOT NULL,
+			name character varying(255) NOT NULL,
 			value double precision NOT NULL,
 			CONSTRAINT gauge_pkey PRIMARY KEY (id)
 		);

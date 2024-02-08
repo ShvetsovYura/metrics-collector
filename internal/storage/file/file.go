@@ -153,5 +153,5 @@ func (fs *FileStorage) Restore() error {
 }
 
 func (fs *FileStorage) Ping() error {
-	return errors.New("It's not db. FileStorage")
+	return errors.New("it's not db. filestorage")
 }
