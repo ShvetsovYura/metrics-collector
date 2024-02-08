@@ -12,7 +12,7 @@ func TestDump(t *testing.T) {
 	defer func() {
 		os.Remove(path)
 	}()
-	fs := NewFileStorage(path, 40, false)
+	fs := NewFileStorage(path, 40, false, 0)
 	var g = make(map[string]float64, 10)
 	var c = make(map[string]int64, 2)
 	g["Alloc"] = 44.1
@@ -23,7 +23,7 @@ func TestDump(t *testing.T) {
 	t.Run("test dump & resotre", func(t *testing.T) {
 		assert.NoError(t, err)
 		assert.FileExists(t, path)
-		gauges, counter, err := fs.Restore()
+		gauges, counter, err := fs.RestoreNow()
 
 		assert.NoError(t, err)
 

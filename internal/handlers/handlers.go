@@ -11,7 +11,6 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/db"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	"github.com/go-chi/chi/v5"
@@ -23,7 +22,10 @@ type Storage interface {
 	SetCounter(name string, val int64) error
 	GetGauge(name string) (metric.Gauge, error)
 	GetCounter(name string) (metric.Counter, error)
+	Ping() error
 	ToList() []string
+	Save() error
+	Restore() error
 }
 
 func MetricUpdateHandler(m Storage) http.HandlerFunc {
@@ -216,9 +218,9 @@ func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
 	}
 }
 
-func DBPingHandler(db *db.DB) http.HandlerFunc {
+func DBPingHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := db.Ping()
+		err := m.Ping()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

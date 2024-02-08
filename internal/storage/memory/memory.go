@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
@@ -67,4 +68,15 @@ func (m *MemStorage) ToList() []string {
 		list = append(list, c.ToString())
 	}
 	return list
+}
+
+func (m *MemStorage) Ping() error {
+	return errors.New("it's not db. memorystorage")
+}
+
+func (m *MemStorage) Save() error {
+	return nil
+}
+func (m *MemStorage) Restore() error {
+	return nil
 }

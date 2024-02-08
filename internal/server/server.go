@@ -3,9 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
@@ -15,43 +13,42 @@ import (
 )
 
 type Server struct {
-	storage *file.FileStorage
-	dbPool  *db.DB
+	storage handlers.Storage
 	options *ServerOptions
 }
 
 func NewServer(metricsCount int, opt *ServerOptions) *Server {
-	immediatelySave := false
-	if opt.StoreInterval == 0 {
-		immediatelySave = true
-	}
-	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, immediatelySave)
+
+	var targetStorage handlers.Storage
+	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, opt.Restore, opt.StoreInterval)
 	dbCtx := context.Background()
 	dbStorage, err := db.NewDBPool(dbCtx, opt.DBDSN)
 	if err != nil {
-		panic(err)
+		targetStorage = fileStorage
+	} else {
+		targetStorage = dbStorage
+	}
+
+	pingErr := dbStorage.Ping()
+	if pingErr != nil {
+		targetStorage = fileStorage
+	} else {
+		targetStorage = dbStorage
+
 	}
 	return &Server{
-		storage: fileStorage,
-		dbPool:  dbStorage,
+		storage: targetStorage,
 		options: opt,
 	}
 }
 
-func (s *Server) Run() error {
-	if s.options.Restore {
-		s.storage.RestoreFromFile()
-	}
+func (s *Server) Run(ctx context.Context) error {
 
-	router := handlers.ServerRouter(s.storage, s.dbPool)
 	srv := &http.Server{
 		Addr:    s.options.EndpointAddr,
-		Handler: router,
+		Handler: handlers.ServerRouter(s.storage),
 	}
 	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
-	// https://habr.com/ru/articles/771626/
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
-	defer stop()
 
 	var wg sync.WaitGroup
 
@@ -65,10 +62,10 @@ func (s *Server) Run() error {
 				logger.Log.Info("Останавливаю http сервер...")
 				srv.Shutdown(ctx)
 				logger.Log.Info("http сервер остановлен!")
-				s.storage.SaveToFile()
+				s.storage.Save()
 				return
 			case <-ticker.C:
-				s.storage.SaveToFile()
+				s.storage.Save()
 			}
 		}
 	}()
