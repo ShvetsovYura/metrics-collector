@@ -35,7 +35,6 @@ func (a *Agent) Run() {
 			a.sendMetrics()
 		}
 	}
-
 }
 
 func (a *Agent) sendMetrics() {
