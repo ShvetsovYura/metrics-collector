@@ -18,7 +18,16 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 		logger.Log.Error(err.Error())
 		return nil, err
 	}
-	connPool.Exec(context.Background(), `
+	createErr := createTables(connPool)
+	if err != nil {
+		return nil, createErr
+	}
+
+	return &DBStore{pool: connPool}, nil
+}
+
+func createTables(connectionPool *pgxpool.Pool) error {
+	_, err := connectionPool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS public.counter
 		(
 			id  serial not null,
@@ -56,7 +65,7 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 		END
 		$do$;
 	`)
-	return &DBStore{pool: connPool}, nil
+	return err
 }
 
 func (db *DBStore) SetGauge(name string, value float64) error {
