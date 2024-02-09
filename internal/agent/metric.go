@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
 )
 
@@ -24,17 +25,18 @@ func NewMetrics(initSize int) metrics {
 }
 
 func (m metrics) SendBatch(baseURL string) error {
-	metricsBatch := make([]models.Metrics, 10)
+	metricsBatch := make([]models.Metrics, 0, 100)
 	for k, v := range m {
 		metricsBatch = append(metricsBatch, v.GetObj(k))
 	}
+	logger.Log.Info(metricsBatch)
 	link := fmt.Sprintf("http://%s/updates/", baseURL)
 	data, err := json.Marshal(metricsBatch)
 	if err != nil {
 		return err
 	}
 	sendMetric(data, link, "application/json")
-
+	return err
 }
 
 func (g gauge) Send(mName string, baseURL string) {
@@ -45,7 +47,7 @@ func (g gauge) Send(mName string, baseURL string) {
 }
 
 func (g gauge) MarshalToJson(mName string) []byte {
-	data, _ := json.Marshal(g.GetObj())
+	data, _ := json.Marshal(g.GetObj(mName))
 	return data
 }
 
@@ -56,7 +58,7 @@ func (c counter) Send(mName string, baseURL string) {
 }
 
 func (c counter) MarshalToJson(mName string) []byte {
-	data, _ := json.Marshal(c.GetObj())
+	data, _ := json.Marshal(c.GetObj(mName))
 	return data
 }
 
