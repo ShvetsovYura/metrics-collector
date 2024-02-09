@@ -33,6 +33,7 @@ func createTables(connectionPool *pgxpool.Pool) error {
 			id  serial not null,
 			name character varying(255) NOT NULL,
 			value integer NOT NULL,
+			updated_at timestamp with time zone NOT NULL DEFAULT now(),
 			CONSTRAINT counter_pkey PRIMARY KEY (id)
 		);
 		CREATE TABLE IF NOT EXISTS public.gauge
@@ -40,6 +41,7 @@ func createTables(connectionPool *pgxpool.Pool) error {
 			id serial NOT NULL,
 			name character varying(255) NOT NULL,
 			value double precision NOT NULL,
+			updated_at timestamp with time zone NOT NULL DEFAULT now(),
 			CONSTRAINT gauge_pkey PRIMARY KEY (id)
 		);
 
