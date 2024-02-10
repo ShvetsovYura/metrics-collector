@@ -5,6 +5,7 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -94,7 +95,7 @@ func (db *DBStore) SetCounter(name string, value int64) error {
 }
 
 func (db *DBStore) GetCounter(name_ string) (metric.Counter, error) {
-	row := db.pool.QueryRow(context.Background(), "selecc name, value from counter where name=$1", name_)
+	row := db.pool.QueryRow(context.Background(), "select name, value from counter where name=$1", name_)
 	var name string
 	var value float64
 	err := row.Scan(&name, &value)
@@ -172,4 +173,35 @@ func (db *DBStore) Save() error {
 
 func (db *DBStore) Restore() error {
 	return nil
+}
+
+func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) {
+	logger.Log.Info("save metrics in DBStorage GAUGES")
+	stmt := "insert into gauge(name, value) values(@name, @value) on conflict (name) do update set value=@value"
+	batch := &pgx.Batch{}
+	for k, v := range gauges {
+		args := pgx.NamedArgs{
+			"name":  k,
+			"value": v.GetRawValue(),
+		}
+		batch.Queue(stmt, args)
+	}
+	results := db.pool.SendBatch(context.Background(), batch)
+	defer results.Close()
+	results.Exec()
+}
+func (db *DBStore) SaveCountersBatch(counters map[string]metric.Counter) {
+	logger.Log.Info("save metrics in DBStorage COUNTERS")
+	stmt := "insert into counter(name, value) values(@name, @value) on conflict (name) do update set value=@value"
+	batch := &pgx.Batch{}
+	for k, v := range counters {
+		args := pgx.NamedArgs{
+			"name":  k,
+			"value": v.GetRawValue(),
+		}
+		batch.Queue(stmt, args)
+	}
+	results := db.pool.SendBatch(context.Background(), batch)
+	defer results.Close()
+	results.Exec()
 }

@@ -27,3 +27,6 @@ vendor/
 
 .env
 lf.log
+
+autotests/
+at.sh
