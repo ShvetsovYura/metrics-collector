@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
@@ -26,6 +27,8 @@ type Storage interface {
 	ToList() []string
 	Save() error
 	Restore() error
+	SaveGaugesBatch(map[string]metric.Gauge)
+	SaveCountersBatch(map[string]metric.Counter)
 }
 
 func MetricUpdateHandler(m Storage) http.HandlerFunc {
@@ -96,7 +99,7 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		entity := &models.Metrics{}
+		e := &models.Metrics{}
 
 		b, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -107,34 +110,34 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		defer r.Body.Close()
 
 		w.Header().Set("Content-Type", "application/json")
-
-		if err := json.Unmarshal(b, &entity); err != nil {
+		if err := json.Unmarshal(b, &e); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, entity.MType) {
+		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, e.MType) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		var marshalVal []byte
 		var marshalErr error
-		if entity.MType == internal.InGaugeName {
-			m.SetGauge(entity.ID, *entity.Value)
-			val, _ := m.GetGauge(entity.ID)
+
+		switch e.MType {
+		case internal.InGaugeName:
+			m.SetGauge(e.ID, *e.Value)
+			val, _ := m.GetGauge(e.ID)
 			actualVal := models.Metrics{
-				ID:    entity.ID,
+				ID:    e.ID,
 				MType: internal.InGaugeName,
 				Value: val.GetRawValue(),
 			}
 			marshalVal, marshalErr = json.Marshal(actualVal)
 
-		} else if entity.MType == internal.InCounterName {
-			m.SetCounter(entity.ID, *entity.Delta)
-			val, _ := m.GetCounter(entity.ID)
+		case internal.InCounterName:
+			m.SetCounter(e.ID, *e.Delta)
+			val, _ := m.GetCounter(e.ID)
 			actualVal := models.Metrics{
-				ID:    entity.ID,
+				ID:    e.ID,
 				MType: internal.InCounterName,
 				Delta: val.GetRawValue(),
 			}
@@ -142,9 +145,10 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		}
 
 		if marshalErr != nil {
-			http.Error(w, marshalErr.Error(), http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
 		w.Write(marshalVal)
 	}
@@ -229,4 +233,47 @@ func DBPingHandler(m Storage) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 	}
 
+}
+
+func MetricBatchUpdateHandler(m Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var metricModels []models.Metrics
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		errParse := json.Unmarshal(body, &metricModels)
+		if errParse != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		var gauges = make(map[string]metric.Gauge, 100)
+		var counters = make(map[string]metric.Counter, 100)
+
+		for _, mdl := range metricModels {
+			switch mdl.MType {
+			case internal.InGaugeName:
+				gauges[mdl.ID] = metric.Gauge(*mdl.Value)
+			case internal.InCounterName:
+				logger.Log.Infof("name: %s, val:%v", mdl.ID, *mdl.Delta)
+
+				if v, ok := counters[mdl.ID]; ok {
+					counters[mdl.ID] = v + metric.Counter(*mdl.Delta)
+				} else {
+					counters[mdl.ID] = metric.Counter(*mdl.Delta)
+				}
+
+			}
+		}
+		m.SaveCountersBatch(counters)
+		m.SaveGaugesBatch(gauges)
+
+		w.WriteHeader(http.StatusOK)
+	}
 }

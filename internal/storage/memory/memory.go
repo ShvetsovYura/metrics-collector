@@ -80,3 +80,6 @@ func (m *MemStorage) Save() error {
 func (m *MemStorage) Restore() error {
 	return nil
 }
+
+func (m *MemStorage) SaveGaugesBatch(gauges map[string]metric.Gauge)      {}
+func (m *MemStorage) SaveCountersBatch(couters map[string]metric.Counter) {}

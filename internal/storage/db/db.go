@@ -3,8 +3,10 @@ package db
 import (
 	"context"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -18,12 +20,22 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 		logger.Log.Error(err.Error())
 		return nil, err
 	}
-	connPool.Exec(context.Background(), `
+	createErr := createTables(connPool)
+	if createErr != nil {
+		return nil, createErr
+	}
+
+	return &DBStore{pool: connPool}, nil
+}
+
+func createTables(connectionPool *pgxpool.Pool) error {
+	_, err := connectionPool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS public.counter
 		(
 			id  serial not null,
 			name character varying(255) NOT NULL,
-			value integer NOT NULL,
+			value bigint NOT NULL,
+			updated_at timestamp with time zone NOT NULL DEFAULT now(),
 			CONSTRAINT counter_pkey PRIMARY KEY (id)
 		);
 		CREATE TABLE IF NOT EXISTS public.gauge
@@ -31,6 +43,7 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 			id serial NOT NULL,
 			name character varying(255) NOT NULL,
 			value double precision NOT NULL,
+			updated_at timestamp with time zone NOT NULL DEFAULT now(),
 			CONSTRAINT gauge_pkey PRIMARY KEY (id)
 		);
 
@@ -56,7 +69,7 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 		END
 		$do$;
 	`)
-	return &DBStore{pool: connPool}, nil
+	return err
 }
 
 func (db *DBStore) SetGauge(name string, value float64) error {
@@ -83,7 +96,7 @@ func (db *DBStore) SetCounter(name string, value int64) error {
 }
 
 func (db *DBStore) GetCounter(name_ string) (metric.Counter, error) {
-	row := db.pool.QueryRow(context.Background(), "selecc name, value from counter where name=$1", name_)
+	row := db.pool.QueryRow(context.Background(), "select name, value from counter where name=$1", name_)
 	var name string
 	var value float64
 	err := row.Scan(&name, &value)
@@ -161,4 +174,42 @@ func (db *DBStore) Save() error {
 
 func (db *DBStore) Restore() error {
 	return nil
+}
+
+func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) {
+	logger.Log.Info("save metrics in DBStorage GAUGES")
+	stmt := "insert into gauge(name, value) values(@name, @value) on conflict (name) do update set value=@value"
+	batch := &pgx.Batch{}
+	for k, v := range gauges {
+		args := pgx.NamedArgs{
+			"name":  k,
+			"value": v.GetRawValue(),
+		}
+		batch.Queue(stmt, args)
+	}
+	results := db.pool.SendBatch(context.Background(), batch)
+	defer results.Close()
+	results.Exec()
+}
+
+func (db *DBStore) SaveCountersBatch(counters map[string]metric.Counter) {
+	logger.Log.Info("save metrics in DBStorage COUNTERS")
+
+	var counterValue *int64
+	selectStmt := sq.Select("value").From("counter").PlaceholderFormat(sq.Dollar)
+	updateStmt := sq.Update("counter").PlaceholderFormat(sq.Dollar)
+	insertStmt := sq.Insert("counter").Columns("name", "value").PlaceholderFormat(sq.Dollar)
+
+	for k, v := range counters {
+		stmt, args, _ := selectStmt.Where(sq.Eq{"name": k}).ToSql()
+		db.pool.QueryRow(context.Background(), stmt, args...).Scan(&counterValue)
+
+		if counterValue != nil {
+			stmt, args, _ := updateStmt.Where(sq.Eq{"name": k}).Set("value", *counterValue+*v.GetRawValue()).ToSql()
+			db.pool.Exec(context.Background(), stmt, args...)
+		} else {
+			stmt, args, _ := insertStmt.Values(k, v).ToSql()
+			db.pool.Exec(context.Background(), stmt, args...)
+		}
+	}
 }
