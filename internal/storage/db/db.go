@@ -34,7 +34,7 @@ func createTables(connectionPool *pgxpool.Pool) error {
 		(
 			id  serial not null,
 			name character varying(255) NOT NULL,
-			value bitint NOT NULL,
+			value bigint NOT NULL,
 			updated_at timestamp with time zone NOT NULL DEFAULT now(),
 			CONSTRAINT counter_pkey PRIMARY KEY (id)
 		);
