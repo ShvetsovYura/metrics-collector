@@ -21,21 +21,16 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 
 	var targetStorage handlers.Storage
 	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, opt.Restore, opt.StoreInterval)
+	targetStorage = fileStorage
 	dbCtx := context.Background()
 	dbStorage, err := db.NewDBPool(dbCtx, opt.DBDSN)
-	if err != nil {
-		targetStorage = fileStorage
-	} else {
-		targetStorage = dbStorage
+	if err == nil {
+		pingErr := dbStorage.Ping()
+		if pingErr == nil {
+			targetStorage = dbStorage
+		}
 	}
 
-	pingErr := dbStorage.Ping()
-	if pingErr != nil {
-		targetStorage = fileStorage
-	} else {
-		targetStorage = dbStorage
-
-	}
 	return &Server{
 		storage: targetStorage,
 		options: opt,
@@ -48,6 +43,8 @@ func (s *Server) Run(ctx context.Context) error {
 		Addr:    s.options.EndpointAddr,
 		Handler: handlers.ServerRouter(s.storage),
 	}
+
+	logger.Log.Info("START HTTP SERVER")
 	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
 
 	var wg sync.WaitGroup
