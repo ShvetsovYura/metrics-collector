@@ -20,7 +20,7 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 		return nil, err
 	}
 	createErr := createTables(connPool)
-	if err != nil {
+	if createErr != nil {
 		return nil, createErr
 	}
 

@@ -158,12 +158,8 @@ func (fs *FileStorage) Ping() error {
 
 func (fs *FileStorage) SaveGaugesBatch(gauges map[string]metric.Gauge) {
 	logger.Log.Info("save metrics in FILE GAUGES")
-
-	return
 }
 
 func (fs *FileStorage) SaveCountersBatch(counters map[string]metric.Counter) {
 	logger.Log.Info("save metrics in FILE COUNTERS")
-
-	return
 }

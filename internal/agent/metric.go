@@ -11,7 +11,7 @@ import (
 
 type Sender interface {
 	Send(string, string)
-	MarshalToJson(string) []byte
+	MarshalToJSON(string) []byte
 	GetObj(string) models.Metrics
 }
 type metrics map[string]Sender
@@ -42,22 +42,22 @@ func (m metrics) SendBatch(baseURL string) error {
 func (g gauge) Send(mName string, baseURL string) {
 	link := fmt.Sprintf("http://%s/update/", baseURL)
 
-	data := g.MarshalToJson(mName)
+	data := g.MarshalToJSON(mName)
 	sendMetric(data, link, "application/json")
 }
 
-func (g gauge) MarshalToJson(mName string) []byte {
+func (g gauge) MarshalToJSON(mName string) []byte {
 	data, _ := json.Marshal(g.GetObj(mName))
 	return data
 }
 
 func (c counter) Send(mName string, baseURL string) {
 	link := fmt.Sprintf("http://%s/update/", baseURL)
-	data := c.MarshalToJson(mName)
+	data := c.MarshalToJSON(mName)
 	sendMetric(data, link, "application/json")
 }
 
-func (c counter) MarshalToJson(mName string) []byte {
+func (c counter) MarshalToJSON(mName string) []byte {
 	data, _ := json.Marshal(c.GetObj(mName))
 	return data
 }

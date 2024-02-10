@@ -114,7 +114,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			return
 		}
 		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, e.MType) {
-			w.WriteHeader(http.StatusBadGateway)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
