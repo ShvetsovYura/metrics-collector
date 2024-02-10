@@ -32,8 +32,8 @@ func (a *Agent) Run() {
 		case <-collectTicker.C:
 			a.collectMetrics()
 		case <-sendTicker.C:
-			// a.sendMetrics()
-			a.sendMetricsBatch()
+			a.sendMetrics()
+			// a.sendMetricsBatch()
 		}
 	}
 }
