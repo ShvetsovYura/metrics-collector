@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
@@ -253,13 +254,15 @@ func MetricBatchUpdateHandler(m Storage) http.HandlerFunc {
 		}
 
 		var gauges = make(map[string]metric.Gauge, 100)
-		var counters = make(map[string]metric.Counter, 1)
+		var counters = make(map[string]metric.Counter, 100)
 
 		for _, mdl := range metricModels {
 			switch mdl.MType {
 			case internal.InGaugeName:
 				gauges[mdl.ID] = metric.Gauge(*mdl.Value)
 			case internal.InCounterName:
+				logger.Log.Infof("name: %s, val:%v", mdl.ID, *mdl.Delta)
+
 				if v, ok := counters[mdl.ID]; ok {
 					counters[mdl.ID] = v + metric.Counter(*mdl.Delta)
 				} else {
@@ -268,8 +271,8 @@ func MetricBatchUpdateHandler(m Storage) http.HandlerFunc {
 
 			}
 		}
-		m.SaveGaugesBatch(gauges)
 		m.SaveCountersBatch(counters)
+		m.SaveGaugesBatch(gauges)
 
 		w.WriteHeader(http.StatusOK)
 	}

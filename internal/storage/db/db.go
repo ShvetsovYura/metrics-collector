@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/jackc/pgx/v5"
@@ -33,7 +34,7 @@ func createTables(connectionPool *pgxpool.Pool) error {
 		(
 			id  serial not null,
 			name character varying(255) NOT NULL,
-			value integer NOT NULL,
+			value bitint NOT NULL,
 			updated_at timestamp with time zone NOT NULL DEFAULT now(),
 			CONSTRAINT counter_pkey PRIMARY KEY (id)
 		);
@@ -190,18 +191,25 @@ func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) {
 	defer results.Close()
 	results.Exec()
 }
+
 func (db *DBStore) SaveCountersBatch(counters map[string]metric.Counter) {
 	logger.Log.Info("save metrics in DBStorage COUNTERS")
-	stmt := "insert into counter(name, value) values(@name, @value) on conflict (name) do update set value=@value"
-	batch := &pgx.Batch{}
+
+	var counterValue *int64
+	selectStmt := sq.Select("value").From("counter").PlaceholderFormat(sq.Dollar)
+	updateStmt := sq.Update("counter").PlaceholderFormat(sq.Dollar)
+	insertStmt := sq.Insert("counter").Columns("name", "value").PlaceholderFormat(sq.Dollar)
+
 	for k, v := range counters {
-		args := pgx.NamedArgs{
-			"name":  k,
-			"value": v.GetRawValue(),
+		stmt, args, _ := selectStmt.Where(sq.Eq{"name": k}).ToSql()
+		db.pool.QueryRow(context.Background(), stmt, args...).Scan(&counterValue)
+
+		if counterValue != nil {
+			stmt, args, _ := updateStmt.Where(sq.Eq{"name": k}).Set("value", *counterValue+*v.GetRawValue()).ToSql()
+			db.pool.Exec(context.Background(), stmt, args...)
+		} else {
+			stmt, args, _ := insertStmt.Values(k, v).ToSql()
+			db.pool.Exec(context.Background(), stmt, args...)
 		}
-		batch.Queue(stmt, args)
 	}
-	results := db.pool.SendBatch(context.Background(), batch)
-	defer results.Close()
-	results.Exec()
 }
