@@ -87,16 +87,19 @@ func (db *DBStore) SetGauge(name string, value float64) error {
 }
 
 func (db *DBStore) SetCounter(name string, value int64) error {
-	_, err := db.pool.Exec(context.Background(),
-		`
-	insert into counter(name, value) values($1, $2)
-	on conflict (name) do update set value = $2	
-	`, name, value)
+	stmt, args, _ := sq.Insert("counter").
+		Columns("name", "value").
+		Values(name, value).
+		Suffix("on conflict (name) do update set value=EXCLUDED.value").
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	_, err := db.pool.Exec(context.Background(), stmt, args...)
 	return err
 }
 
 func (db *DBStore) GetCounter(name_ string) (metric.Counter, error) {
-	row := db.pool.QueryRow(context.Background(), "select name, value from counter where name=$1", name_)
+	stmt, args, _ := sq.Select("name", "value").From("counter").Where(sq.Eq{"name": name_}).PlaceholderFormat(sq.Dollar).ToSql()
+	row := db.pool.QueryRow(context.Background(), stmt, args...)
 	var name string
 	var value float64
 	err := row.Scan(&name, &value)
@@ -107,7 +110,8 @@ func (db *DBStore) GetCounter(name_ string) (metric.Counter, error) {
 }
 
 func (db *DBStore) GetGauge(name_ string) (metric.Gauge, error) {
-	row := db.pool.QueryRow(context.Background(), "select name, value from gauge where name=$1", name_)
+	stmt, args, _ := sq.Select("name", "value").From("gauge").Where(sq.Eq{"name": name_}).PlaceholderFormat(sq.Dollar).ToSql()
+	row := db.pool.QueryRow(context.Background(), stmt, args...)
 	var name string
 	var value float64
 	err := row.Scan(&name, &value)
@@ -118,7 +122,8 @@ func (db *DBStore) GetGauge(name_ string) (metric.Gauge, error) {
 }
 
 func (db *DBStore) GetGauges() map[string]metric.Gauge {
-	rows, _ := db.pool.Query(context.Background(), "select name, value from gauge")
+	stmt, _, _ := sq.Select("name", "value").From("gauge").ToSql()
+	rows, _ := db.pool.Query(context.Background(), stmt)
 	var gauges = make(map[string]metric.Gauge, 100)
 
 	for rows.Next() {
@@ -133,7 +138,8 @@ func (db *DBStore) GetGauges() map[string]metric.Gauge {
 }
 
 func (db *DBStore) GetCounters() map[string]metric.Counter {
-	rows, _ := db.pool.Query(context.Background(), "select name, value from counter")
+	stmt, _, _ := sq.Select("name", "value").From("couter").ToSql()
+	rows, _ := db.pool.Query(context.Background(), stmt)
 	var counters = make(map[string]metric.Counter, 1)
 
 	for rows.Next() {
