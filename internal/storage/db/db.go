@@ -90,7 +90,7 @@ func (db *DBStore) SetCounter(name string, value int64) error {
 	stmt, args, _ := sq.Insert("counter").
 		Columns("name", "value").
 		Values(name, value).
-		Suffix("on conflict (name) do update set value=EXCLUDED.value").
+		Suffix("on conflict (name) do update set value=EXCLUDED.value + counter.value").
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
 	_, err := db.pool.Exec(context.Background(), stmt, args...)
