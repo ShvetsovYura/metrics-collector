@@ -101,49 +101,74 @@ func (db *DBStore) GetGauge(name_ string) (metric.Gauge, error) {
 	return metric.Gauge(value), nil
 }
 
-func (db *DBStore) GetGauges() map[string]metric.Gauge {
-	stmt, _, _ := sq.Select("name", "value").From("gauge").ToSql()
-	rows, _ := db.pool.Query(context.Background(), stmt)
+func (db *DBStore) GetGauges() (map[string]metric.Gauge, error) {
+	stmt, _, err := sq.Select("name", "value").From("gauge").ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.pool.Query(context.Background(), stmt)
+	if err != nil {
+		return nil, err
+	}
 	var gauges = make(map[string]metric.Gauge, 100)
 
 	for rows.Next() {
 		var name string
 		var value float64
 
-		_ = rows.Scan(&name, &value)
+		err := rows.Scan(&name, &value)
+		if err != nil {
+			return nil, err
+		}
 
 		gauges[name] = metric.Gauge(value)
 	}
-	return gauges
+	return gauges, nil
 }
 
-func (db *DBStore) GetCounters() map[string]metric.Counter {
-	stmt, _, _ := sq.Select("name", "value").From("couter").ToSql()
-	rows, _ := db.pool.Query(context.Background(), stmt)
+func (db *DBStore) GetCounters() (map[string]metric.Counter, error) {
+	stmt, _, err := sq.Select("name", "value").From("couter").ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.pool.Query(context.Background(), stmt)
+	if err != nil {
+		return nil, err
+	}
 	var counters = make(map[string]metric.Counter, 1)
 
 	for rows.Next() {
 		var name string
 		var value int64
 
-		_ = rows.Scan(&name, &value)
+		err := rows.Scan(&name, &value)
+		if err != nil {
+			return nil, err
+		}
 
 		counters[name] = metric.Counter(value)
 	}
 
-	return counters
+	return counters, nil
 }
 
-func (db *DBStore) ToList() []string {
+func (db *DBStore) ToList() ([]string, error) {
 	var list []string
-
-	for _, g := range db.GetGauges() {
-		list = append(list, g.ToString())
+	g, err := db.GetGauges()
+	if err != nil {
+		return nil, err
 	}
-	for _, c := range db.GetCounters() {
-		list = append(list, c.ToString())
+	for _, v := range g {
+		list = append(list, v.ToString())
 	}
-	return list
+	c, err := db.GetCounters()
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range c {
+		list = append(list, v.ToString())
+	}
+	return list, nil
 }
 
 func (db *DBStore) Ping() error {

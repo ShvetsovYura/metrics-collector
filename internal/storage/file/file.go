@@ -64,7 +64,7 @@ func (fs *FileStorage) GetCounter(name string) (metric.Counter, error) {
 	return fs.memStorage.GetCounter(name)
 }
 
-func (fs *FileStorage) ToList() []string {
+func (fs *FileStorage) ToList() ([]string, error) {
 	return fs.memStorage.ToList()
 }
 

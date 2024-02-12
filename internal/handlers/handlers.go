@@ -23,7 +23,7 @@ type Storage interface {
 	GetGauge(name string) (metric.Gauge, error)
 	GetCounter(name string) (metric.Counter, error)
 	Ping() error
-	ToList() []string
+	ToList() ([]string, error)
 	Save() error
 	Restore() error
 	SaveGaugesBatch(map[string]metric.Gauge)
@@ -217,7 +217,12 @@ func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, strings.Join(m.ToList(), ", "))
+		mList, err := m.ToList()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		io.WriteString(w, strings.Join(mList, ", "))
 	}
 }
 

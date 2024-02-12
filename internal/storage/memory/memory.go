@@ -58,7 +58,7 @@ func (m *MemStorage) GetCounters() map[string]metric.Counter {
 	return m.counterMetric
 }
 
-func (m *MemStorage) ToList() []string {
+func (m *MemStorage) ToList() ([]string, error) {
 	var list []string
 
 	for _, c := range m.gaugeMetrics {
@@ -67,7 +67,7 @@ func (m *MemStorage) ToList() []string {
 	for _, c := range m.counterMetric {
 		list = append(list, c.ToString())
 	}
-	return list
+	return list, nil
 }
 
 func (m *MemStorage) Ping() error {
