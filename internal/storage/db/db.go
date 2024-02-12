@@ -32,7 +32,7 @@ func createTables(connectionPool *pgxpool.Pool) error {
 	_, err := connectionPool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS public.counter
 		(
-			id  serial not null,
+			id  bigserial not null,
 			name character varying(255) NOT NULL,
 			value bigint NOT NULL,
 			updated_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -40,7 +40,7 @@ func createTables(connectionPool *pgxpool.Pool) error {
 		);
 		CREATE TABLE IF NOT EXISTS public.gauge
 		(
-			id serial NOT NULL,
+			id bigserial NOT NULL,
 			name character varying(255) NOT NULL,
 			value double precision NOT NULL,
 			updated_at timestamp with time zone NOT NULL DEFAULT now(),
