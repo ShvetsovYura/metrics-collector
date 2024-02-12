@@ -15,7 +15,6 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	"github.com/go-chi/chi/v5"
-	_ "github.com/lib/pq"
 )
 
 type Storage interface {
