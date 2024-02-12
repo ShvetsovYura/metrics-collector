@@ -13,6 +13,10 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 )
 
+type StorageCloser interface {
+	Save() error
+}
+
 type Server struct {
 	storage handlers.Storage
 	options *ServerOptions

@@ -26,8 +26,8 @@ type Storage interface {
 	ToList() ([]string, error)
 	Save() error
 	Restore() error
-	SaveGaugesBatch(map[string]metric.Gauge)
-	SaveCountersBatch(map[string]metric.Counter)
+	SaveGaugesBatch(map[string]metric.Gauge) error
+	SaveCountersBatch(map[string]metric.Counter) error
 }
 
 func MetricUpdateHandler(m Storage) http.HandlerFunc {

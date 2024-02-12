@@ -37,7 +37,7 @@ func createTables(connectionPool *pgxpool.Pool) error {
 			value bigint NOT NULL,
 			updated_at timestamp with time zone NOT NULL DEFAULT now(),
 			CONSTRAINT counter_pkey PRIMARY KEY (id),
-			CONSTRAINT counter_metric_name UNIQUE (name);
+			CONSTRAINT counter_metric_name UNIQUE (name)
 		);
 		CREATE TABLE IF NOT EXISTS gauge
 		(
@@ -187,7 +187,7 @@ func (db *DBStore) Restore() error {
 	return nil
 }
 
-func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) {
+func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) error {
 	logger.Log.Info("save metrics in DBStorage GAUGES")
 	stmt := "insert into gauge(name, value) values(@name, @value) on conflict (name) do update set value=@value"
 	batch := &pgx.Batch{}
@@ -200,27 +200,35 @@ func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) {
 	}
 	results := db.pool.SendBatch(context.Background(), batch)
 	defer results.Close()
-	results.Exec()
+	_, err := results.Exec()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (db *DBStore) SaveCountersBatch(counters map[string]metric.Counter) {
+func (db *DBStore) SaveCountersBatch(counters map[string]metric.Counter) error {
 	logger.Log.Info("save metrics in DBStorage COUNTERS")
 
-	var counterValue *int64
-	selectStmt := sq.Select("value").From("counter").PlaceholderFormat(sq.Dollar)
-	updateStmt := sq.Update("counter").PlaceholderFormat(sq.Dollar)
-	insertStmt := sq.Insert("counter").Columns("name", "value").PlaceholderFormat(sq.Dollar)
+	insertStmt := sq.Insert("counter").Columns("name", "value").
+		Suffix("on conflict (name) do update set value = counter.value + EXCLUDED.value").
+		PlaceholderFormat(sq.Dollar)
 
+	txCtx := context.Background()
+	tx, err := db.pool.Begin(txCtx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(txCtx)
 	for k, v := range counters {
-		stmt, args, _ := selectStmt.Where(sq.Eq{"name": k}).ToSql()
-		db.pool.QueryRow(context.Background(), stmt, args...).Scan(&counterValue)
-
-		if counterValue != nil {
-			stmt, args, _ := updateStmt.Where(sq.Eq{"name": k}).Set("value", *counterValue+*v.GetRawValue()).ToSql()
-			db.pool.Exec(context.Background(), stmt, args...)
-		} else {
-			stmt, args, _ := insertStmt.Values(k, v).ToSql()
-			db.pool.Exec(context.Background(), stmt, args...)
+		stmt, args, err := insertStmt.Values(k, *v.GetRawValue()).ToSql()
+		if err != nil {
+			return err
+		}
+		_, err = db.pool.Exec(context.Background(), stmt, args...)
+		if err != nil {
+			return err
 		}
 	}
+	return tx.Commit(txCtx)
 }

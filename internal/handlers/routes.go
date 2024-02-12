@@ -20,8 +20,6 @@ func ServerRouter(s Storage) chi.Router {
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 	r.Use(httplog.RequestLogger(logger.HTTPLogger))
 
-	// Я так и не нашел, как можно с помощью мидлварь chi декодировать запрос от агента
-	// поэтому оставил свою реализацию только для чтения gzip
 	r.Get("/", middlewares.WithUnzipRequest(MetricGetCurrentValuesHandler(s)))
 	r.Post(fmt.Sprintf("/update/{%s}/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam, internal.MetricValuePathParam), middlewares.WithUnzipRequest(MetricUpdateHandler(s)))
 	r.Get(fmt.Sprintf("/value/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam), middlewares.WithUnzipRequest(MetricGetValueHandler(s)))

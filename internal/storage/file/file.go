@@ -156,10 +156,12 @@ func (fs *FileStorage) Ping() error {
 	return errors.New("it's not db. filestorage")
 }
 
-func (fs *FileStorage) SaveGaugesBatch(gauges map[string]metric.Gauge) {
+func (fs *FileStorage) SaveGaugesBatch(gauges map[string]metric.Gauge) error {
 	logger.Log.Info("save metrics in FILE GAUGES")
+	return nil
 }
 
-func (fs *FileStorage) SaveCountersBatch(counters map[string]metric.Counter) {
+func (fs *FileStorage) SaveCountersBatch(counters map[string]metric.Counter) error {
 	logger.Log.Info("save metrics in FILE COUNTERS")
+	return nil
 }
