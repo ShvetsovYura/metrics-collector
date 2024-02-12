@@ -18,8 +18,9 @@ type StorageCloser interface {
 }
 
 type Server struct {
-	storage handlers.Storage
-	options *ServerOptions
+	storage   StorageCloser
+	webserver *http.Server
+	options   *ServerOptions
 }
 
 func NewServer(metricsCount int, opt *ServerOptions) *Server {
@@ -41,19 +42,17 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 		}
 		targetStorage = dbStorage
 	}
-
 	return &Server{
 		storage: targetStorage,
+		webserver: &http.Server{
+			Addr:    opt.EndpointAddr,
+			Handler: handlers.ServerRouter(targetStorage),
+		},
 		options: opt,
 	}
 }
 
 func (s *Server) Run(ctx context.Context) error {
-
-	srv := &http.Server{
-		Addr:    s.options.EndpointAddr,
-		Handler: handlers.ServerRouter(s.storage),
-	}
 
 	logger.Log.Info("START HTTP SERVER")
 	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
@@ -68,17 +67,20 @@ func (s *Server) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				logger.Log.Info("Останавливаю http сервер...")
-				srv.Shutdown(ctx)
+				s.webserver.Shutdown(ctx)
 				logger.Log.Info("http сервер остановлен!")
-				s.storage.Save()
+
+				err := s.storage.Save()
+				if err != nil {
+					logger.Log.Error(err)
+				}
 				return
 			case <-ticker.C:
 				s.storage.Save()
 			}
 		}
 	}()
-
-	srv.ListenAndServe()
+	s.webserver.ListenAndServe()
 	wg.Wait()
 	return nil
 }
