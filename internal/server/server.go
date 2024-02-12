@@ -10,6 +10,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/db"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 )
 
 type Server struct {
@@ -20,15 +21,21 @@ type Server struct {
 func NewServer(metricsCount int, opt *ServerOptions) *Server {
 
 	var targetStorage handlers.Storage
-	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, opt.Restore, opt.StoreInterval)
-	targetStorage = fileStorage
+
 	dbCtx := context.Background()
-	dbStorage, err := db.NewDBPool(dbCtx, opt.DBDSN)
-	if err == nil {
-		pingErr := dbStorage.Ping()
-		if pingErr == nil {
-			targetStorage = dbStorage
+
+	if opt.DBDSN == "" {
+		if opt.FileStoragePath == "" {
+			targetStorage = memory.NewMemStorage(metricsCount)
+		} else {
+			targetStorage = file.NewFileStorage(opt.FileStoragePath, metricsCount, opt.Restore, opt.StoreInterval)
 		}
+	} else {
+		dbStorage, err := db.NewDBPool(dbCtx, opt.DBDSN)
+		if err != nil {
+			logger.Log.Fatal("Не удалось подключиться к БД!")
+		}
+		targetStorage = dbStorage
 	}
 
 	return &Server{
