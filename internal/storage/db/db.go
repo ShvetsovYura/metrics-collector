@@ -30,44 +30,24 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 
 func createTables(connectionPool *pgxpool.Pool) error {
 	_, err := connectionPool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS public.counter
+		CREATE TABLE IF NOT EXISTS counter
 		(
 			id  bigserial not null,
 			name TEXT NOT NULL,
 			value bigint NOT NULL,
 			updated_at timestamp with time zone NOT NULL DEFAULT now(),
-			CONSTRAINT counter_pkey PRIMARY KEY (id)
+			CONSTRAINT counter_pkey PRIMARY KEY (id),
+			CONSTRAINT counter_metric_name UNIQUE (name);
 		);
-		CREATE TABLE IF NOT EXISTS public.gauge
+		CREATE TABLE IF NOT EXISTS gauge
 		(
 			id bigserial NOT NULL,
 			name TEXT NOT NULL,
 			value double precision NOT NULL,
 			updated_at timestamp with time zone NOT NULL DEFAULT now(),
-			CONSTRAINT gauge_pkey PRIMARY KEY (id)
+			CONSTRAINT gauge_pkey PRIMARY KEY (id),
+			CONSTRAINT gauge_metric_name UNIQUE (name)
 		);
-
-		DO
-		$do$
-		BEGIN
-		IF NOT EXISTS (
-			SELECT * FROM pg_constraint WHERE conname='gauge_metric_name' AND contype = 'u'
-		) THEN
-			ALTER TABLE IF EXISTS gauge ADD CONSTRAINT gauge_metric_name UNIQUE (name);
-		END IF;
-		END
-		$do$;
-
-		DO
-		$do$
-		BEGIN
-		IF NOT EXISTS (
-			SELECT * FROM pg_constraint WHERE conname='counter_metric_name' AND contype = 'u'
-		) THEN
-			ALTER TABLE IF EXISTS counter ADD CONSTRAINT counter_metric_name UNIQUE (name);
-		END IF;
-		END
-		$do$;
 	`)
 	return err
 }
