@@ -20,7 +20,7 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 		logger.Log.Error(err.Error())
 		return nil, err
 	}
-	createErr := createTables(connPool)
+	createErr := createTables(ctx, connPool)
 	if createErr != nil {
 		return nil, createErr
 	}
@@ -28,8 +28,8 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 	return &DBStore{pool: connPool}, nil
 }
 
-func createTables(connectionPool *pgxpool.Pool) error {
-	_, err := connectionPool.Exec(context.Background(), `
+func createTables(ctx context.Context, connectionPool *pgxpool.Pool) error {
+	_, err := connectionPool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS counter
 		(
 			id  bigserial not null,
@@ -52,8 +52,8 @@ func createTables(connectionPool *pgxpool.Pool) error {
 	return err
 }
 
-func (db *DBStore) SetGauge(name string, value float64) error {
-	tag, err := db.pool.Exec(context.Background(),
+func (db *DBStore) SetGauge(ctx context.Context, name string, value float64) error {
+	tag, err := db.pool.Exec(ctx,
 		`
 		insert into gauge (name, value) values($1, $2)
 		on conflict (name) do update set value = $2
@@ -66,20 +66,20 @@ func (db *DBStore) SetGauge(name string, value float64) error {
 	return nil
 }
 
-func (db *DBStore) SetCounter(name string, value int64) error {
+func (db *DBStore) SetCounter(ctx context.Context, name string, value int64) error {
 	stmt, args, _ := sq.Insert("counter").
 		Columns("name", "value").
 		Values(name, value).
 		Suffix("on conflict (name) do update set value=EXCLUDED.value + counter.value").
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
-	_, err := db.pool.Exec(context.Background(), stmt, args...)
+	_, err := db.pool.Exec(ctx, stmt, args...)
 	return err
 }
 
-func (db *DBStore) GetCounter(name_ string) (metric.Counter, error) {
+func (db *DBStore) GetCounter(ctx context.Context, name_ string) (metric.Counter, error) {
 	stmt, args, _ := sq.Select("name", "value").From("counter").Where(sq.Eq{"name": name_}).PlaceholderFormat(sq.Dollar).ToSql()
-	row := db.pool.QueryRow(context.Background(), stmt, args...)
+	row := db.pool.QueryRow(ctx, stmt, args...)
 	var name string
 	var value float64
 	err := row.Scan(&name, &value)
@@ -89,9 +89,9 @@ func (db *DBStore) GetCounter(name_ string) (metric.Counter, error) {
 	return metric.Counter(value), nil
 }
 
-func (db *DBStore) GetGauge(name_ string) (metric.Gauge, error) {
+func (db *DBStore) GetGauge(ctx context.Context, name_ string) (metric.Gauge, error) {
 	stmt, args, _ := sq.Select("name", "value").From("gauge").Where(sq.Eq{"name": name_}).PlaceholderFormat(sq.Dollar).ToSql()
-	row := db.pool.QueryRow(context.Background(), stmt, args...)
+	row := db.pool.QueryRow(ctx, stmt, args...)
 	var name string
 	var value float64
 	err := row.Scan(&name, &value)
@@ -101,12 +101,12 @@ func (db *DBStore) GetGauge(name_ string) (metric.Gauge, error) {
 	return metric.Gauge(value), nil
 }
 
-func (db *DBStore) GetGauges() (map[string]metric.Gauge, error) {
+func (db *DBStore) GetGauges(ctx context.Context) (map[string]metric.Gauge, error) {
 	stmt, _, err := sq.Select("name", "value").From("gauge").ToSql()
 	if err != nil {
 		return nil, err
 	}
-	rows, err := db.pool.Query(context.Background(), stmt)
+	rows, err := db.pool.Query(ctx, stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -126,12 +126,12 @@ func (db *DBStore) GetGauges() (map[string]metric.Gauge, error) {
 	return gauges, nil
 }
 
-func (db *DBStore) GetCounters() (map[string]metric.Counter, error) {
+func (db *DBStore) GetCounters(ctx context.Context) (map[string]metric.Counter, error) {
 	stmt, _, err := sq.Select("name", "value").From("couter").ToSql()
 	if err != nil {
 		return nil, err
 	}
-	rows, err := db.pool.Query(context.Background(), stmt)
+	rows, err := db.pool.Query(ctx, stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -152,16 +152,16 @@ func (db *DBStore) GetCounters() (map[string]metric.Counter, error) {
 	return counters, nil
 }
 
-func (db *DBStore) ToList() ([]string, error) {
+func (db *DBStore) ToList(ctx context.Context) ([]string, error) {
 	var list []string
-	g, err := db.GetGauges()
+	g, err := db.GetGauges(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, v := range g {
 		list = append(list, v.ToString())
 	}
-	c, err := db.GetCounters()
+	c, err := db.GetCounters(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -171,8 +171,8 @@ func (db *DBStore) ToList() ([]string, error) {
 	return list, nil
 }
 
-func (db *DBStore) Ping() error {
-	err := db.pool.Ping(context.Background())
+func (db *DBStore) Ping(ctx context.Context) error {
+	err := db.pool.Ping(ctx)
 	if err != nil {
 		return err
 	}
@@ -183,11 +183,11 @@ func (db *DBStore) Save() error {
 	return nil
 }
 
-func (db *DBStore) Restore() error {
+func (db *DBStore) Restore(ctx context.Context) error {
 	return nil
 }
 
-func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) error {
+func (db *DBStore) SaveGaugesBatch(ctx context.Context, gauges map[string]metric.Gauge) error {
 	logger.Log.Info("save metrics in DBStorage GAUGES")
 	stmt := "insert into gauge(name, value) values(@name, @value) on conflict (name) do update set value=@value"
 	batch := &pgx.Batch{}
@@ -198,7 +198,7 @@ func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) error {
 		}
 		batch.Queue(stmt, args)
 	}
-	results := db.pool.SendBatch(context.Background(), batch)
+	results := db.pool.SendBatch(ctx, batch)
 	defer results.Close()
 	_, err := results.Exec()
 	if err != nil {
@@ -207,28 +207,27 @@ func (db *DBStore) SaveGaugesBatch(gauges map[string]metric.Gauge) error {
 	return nil
 }
 
-func (db *DBStore) SaveCountersBatch(counters map[string]metric.Counter) error {
+func (db *DBStore) SaveCountersBatch(ctx context.Context, counters map[string]metric.Counter) error {
 	logger.Log.Info("save metrics in DBStorage COUNTERS")
 
 	insertStmt := sq.Insert("counter").Columns("name", "value").
 		Suffix("on conflict (name) do update set value = counter.value + EXCLUDED.value").
 		PlaceholderFormat(sq.Dollar)
 
-	txCtx := context.Background()
-	tx, err := db.pool.Begin(txCtx)
+	tx, err := db.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(txCtx)
+	defer tx.Rollback(ctx)
 	for k, v := range counters {
 		stmt, args, err := insertStmt.Values(k, *v.GetRawValue()).ToSql()
 		if err != nil {
 			return err
 		}
-		_, err = db.pool.Exec(context.Background(), stmt, args...)
+		_, err = db.pool.Exec(ctx, stmt, args...)
 		if err != nil {
 			return err
 		}
 	}
-	return tx.Commit(txCtx)
+	return tx.Commit(ctx)
 }

@@ -2,6 +2,7 @@ package file
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -35,37 +36,37 @@ func NewFileStorage(pathToFile string, metricsCount int, restore bool, storeInte
 	}
 
 	if restore {
-		s.Restore()
+		s.Restore(context.Background())
 	}
 	return s
 }
 
-func (fs *FileStorage) GetGauge(name string) (metric.Gauge, error) {
-	return fs.memStorage.GetGauge(name)
+func (fs *FileStorage) GetGauge(ctx context.Context, name string) (metric.Gauge, error) {
+	return fs.memStorage.GetGauge(ctx, name)
 }
 
-func (fs *FileStorage) SetGauge(name string, value float64) error {
-	if err := fs.memStorage.SetGauge(name, value); err != nil {
+func (fs *FileStorage) SetGauge(ctx context.Context, name string, value float64) error {
+	if err := fs.memStorage.SetGauge(ctx, name, value); err != nil {
 		return err
 	}
 	fs.SaveNow()
 	return nil
 }
 
-func (fs *FileStorage) SetCounter(name string, value int64) error {
-	if err := fs.memStorage.SetCounter(name, value); err != nil {
+func (fs *FileStorage) SetCounter(ctx context.Context, name string, value int64) error {
+	if err := fs.memStorage.SetCounter(ctx, name, value); err != nil {
 		return err
 	}
 	fs.SaveNow()
 	return nil
 }
 
-func (fs *FileStorage) GetCounter(name string) (metric.Counter, error) {
-	return fs.memStorage.GetCounter(name)
+func (fs *FileStorage) GetCounter(ctx context.Context, name string) (metric.Counter, error) {
+	return fs.memStorage.GetCounter(ctx, name)
 }
 
-func (fs *FileStorage) ToList() ([]string, error) {
-	return fs.memStorage.ToList()
+func (fs *FileStorage) ToList(ctx context.Context) ([]string, error) {
+	return fs.memStorage.ToList(ctx)
 }
 
 func (fs *FileStorage) Dump(gauges map[string]float64, counters map[string]int64) error {
@@ -118,12 +119,13 @@ func (fs *FileStorage) SaveNow() {
 
 func (fs *FileStorage) Save() error {
 	logger.Log.Info("Начало сохранения метрик в файл ...")
-	var g = make(map[string]float64, len(fs.memStorage.GetGauges()))
-	var c = make(map[string]int64, len(fs.memStorage.GetCounters()))
-	for k, v := range fs.memStorage.GetGauges() {
+	ctx := context.Background()
+	var g = make(map[string]float64, len(fs.memStorage.GetGauges(ctx)))
+	var c = make(map[string]int64, len(fs.memStorage.GetCounters(ctx)))
+	for k, v := range fs.memStorage.GetGauges(ctx) {
 		g[k] = *v.GetRawValue()
 	}
-	for k, v := range fs.memStorage.GetCounters() {
+	for k, v := range fs.memStorage.GetCounters(ctx) {
 		c[k] = *v.GetRawValue()
 	}
 
@@ -136,32 +138,32 @@ func (fs *FileStorage) Save() error {
 
 }
 
-func (fs *FileStorage) Restore() error {
+func (fs *FileStorage) Restore(ctx context.Context) error {
 	g, c, err := fs.RestoreNow()
 	if err != nil {
 		return err
 	}
 
 	for k, v := range g {
-		fs.memStorage.SetGauge(k, v)
+		fs.memStorage.SetGauge(ctx, k, v)
 	}
 	for k, v := range c {
-		fs.memStorage.SetCounter(k, v)
+		fs.memStorage.SetCounter(ctx, k, v)
 	}
 
 	return nil
 }
 
-func (fs *FileStorage) Ping() error {
+func (fs *FileStorage) Ping(ctx context.Context) error {
 	return errors.New("it's not db. filestorage")
 }
 
-func (fs *FileStorage) SaveGaugesBatch(gauges map[string]metric.Gauge) error {
+func (fs *FileStorage) SaveGaugesBatch(ctx context.Context, gauges map[string]metric.Gauge) error {
 	logger.Log.Info("save metrics in FILE GAUGES")
 	return nil
 }
 
-func (fs *FileStorage) SaveCountersBatch(counters map[string]metric.Counter) error {
+func (fs *FileStorage) SaveCountersBatch(ctx context.Context, counters map[string]metric.Counter) error {
 	logger.Log.Info("save metrics in FILE COUNTERS")
 	return nil
 }
