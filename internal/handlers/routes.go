@@ -6,10 +6,24 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/middlewares"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 )
+
+type Storage interface {
+	SetGauge(name string, val float64) error
+	SetCounter(name string, val int64) error
+	GetGauge(name string) (metric.Gauge, error)
+	GetCounter(name string) (metric.Counter, error)
+	Ping() error
+	ToList() ([]string, error)
+	Save() error
+	Restore() error
+	SaveGaugesBatch(map[string]metric.Gauge) error
+	SaveCountersBatch(map[string]metric.Counter) error
+}
 
 func ServerRouter(s Storage) chi.Router {
 

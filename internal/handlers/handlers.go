@@ -17,20 +17,35 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type Storage interface {
+type Setter interface {
 	SetGauge(name string, val float64) error
 	SetCounter(name string, val int64) error
+}
+
+type Getter interface {
 	GetGauge(name string) (metric.Gauge, error)
 	GetCounter(name string) (metric.Counter, error)
-	Ping() error
+}
+
+type Lister interface {
 	ToList() ([]string, error)
-	Save() error
-	Restore() error
+}
+
+type GetterSetter interface {
+	Setter
+	Getter
+}
+
+type Pinger interface {
+	Ping() error
+}
+
+type BatchSaver interface {
 	SaveGaugesBatch(map[string]metric.Gauge) error
 	SaveCountersBatch(map[string]metric.Counter) error
 }
 
-func MetricUpdateHandler(m Storage) http.HandlerFunc {
+func MetricUpdateHandler(m Setter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
 		mName := chi.URLParam(r, internal.MetricNamePathParam)
@@ -62,7 +77,7 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 	}
 }
 
-func MetricGetValueHandler(m Storage) http.HandlerFunc {
+func MetricGetValueHandler(m Getter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
 		mName := chi.URLParam(r, internal.MetricNamePathParam)
@@ -95,7 +110,7 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 
 }
 
-func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
+func MetricUpdateHandlerWithBody(m GetterSetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		e := &models.Metrics{}
@@ -153,7 +168,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	}
 }
 
-func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
+func MetricGetValueHandlerWithBody(m Getter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		entity := models.Metrics{}
@@ -213,7 +228,7 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 
 }
 
-func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
+func MetricGetCurrentValuesHandler(m Lister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
@@ -226,7 +241,7 @@ func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
 	}
 }
 
-func DBPingHandler(m Storage) http.HandlerFunc {
+func DBPingHandler(m Pinger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := m.Ping()
 		if err != nil {
@@ -239,7 +254,7 @@ func DBPingHandler(m Storage) http.HandlerFunc {
 
 }
 
-func MetricBatchUpdateHandler(m Storage) http.HandlerFunc {
+func MetricBatchUpdateHandler(m BatchSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var metricModels []models.Metrics
