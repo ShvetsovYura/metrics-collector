@@ -1,15 +1,30 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/middlewares"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 )
+
+type Storage interface {
+	SetGauge(ctx context.Context, name string, val float64) error
+	SetCounter(ctx context.Context, name string, val int64) error
+	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
+	GetCounter(ctx context.Context, name string) (metric.Counter, error)
+	Ping(ctx context.Context) error
+	ToList(ctx context.Context) ([]string, error)
+	Save() error
+	Restore(context.Context) error
+	SaveGaugesBatch(context.Context, map[string]metric.Gauge) error
+	SaveCountersBatch(context.Context, map[string]metric.Counter) error
+}
 
 func ServerRouter(s Storage) chi.Router {
 
