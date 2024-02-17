@@ -10,7 +10,7 @@ import (
 )
 
 type Sender interface {
-	Send(string, string)
+	Send(string, string, string)
 	MarshalToJSON(string) []byte
 	GetObj(string) models.Metrics
 }
@@ -24,7 +24,7 @@ func NewMetrics(initSize int) metrics {
 	return m
 }
 
-func (m metrics) SendBatch(baseURL string) error {
+func (m metrics) SendBatch(baseURL string, key string) error {
 	metricsBatch := make([]models.Metrics, 0, 100)
 	for k, v := range m {
 		metricsBatch = append(metricsBatch, v.GetObj(k))
@@ -35,15 +35,15 @@ func (m metrics) SendBatch(baseURL string) error {
 	if err != nil {
 		return err
 	}
-	sendMetric(data, link, "application/json")
+	sendMetric(data, link, "application/json", key)
 	return err
 }
 
-func (g gauge) Send(mName string, baseURL string) {
+func (g gauge) Send(mName string, baseURL string, key string) {
 	link := fmt.Sprintf("http://%s/update/", baseURL)
 
 	data := g.MarshalToJSON(mName)
-	sendMetric(data, link, "application/json")
+	sendMetric(data, link, "application/json", key)
 }
 
 func (g gauge) MarshalToJSON(mName string) []byte {
@@ -51,10 +51,10 @@ func (g gauge) MarshalToJSON(mName string) []byte {
 	return data
 }
 
-func (c counter) Send(mName string, baseURL string) {
+func (c counter) Send(mName string, baseURL string, key string) {
 	link := fmt.Sprintf("http://%s/update/", baseURL)
 	data := c.MarshalToJSON(mName)
-	sendMetric(data, link, "application/json")
+	sendMetric(data, link, "application/json", key)
 }
 
 func (c counter) MarshalToJSON(mName string) []byte {

@@ -41,12 +41,12 @@ func (a *Agent) Run() {
 func (a *Agent) sendMetrics() {
 	logger.Log.Info("Start send metrics")
 	for k, v := range a.metrics {
-		v.Send(k, a.options.EndpointAddr)
+		v.Send(k, a.options.EndpointAddr, a.options.Key)
 	}
 }
 func (a Agent) sendMetricsBatch() {
 	logger.Log.Info("Strart send batch metrics")
-	a.metrics.SendBatch(a.options.EndpointAddr)
+	a.metrics.SendBatch(a.options.EndpointAddr, a.options.Key)
 }
 
 func setGauge[Numeric constraints.Float | constraints.Integer](m metrics, name string, v Numeric) {
