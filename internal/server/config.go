@@ -13,6 +13,7 @@ type ServerOptions struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
 	DBDSN           string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
 }
 
 func (o *ServerOptions) ParseArgs() {
@@ -21,6 +22,7 @@ func (o *ServerOptions) ParseArgs() {
 	flag.StringVar(&o.FileStoragePath, "f", "/tmp/metrics-db.json", "path to save metrics values")
 	flag.BoolVar(&o.Restore, "r", true, "restoring metrics values on start")
 	flag.StringVar(&o.DBDSN, "d", "", "database connection DSN")
+	flag.StringVar(&o.Key, "k", "", "Secret key value")
 
 	flag.Parse()
 }
