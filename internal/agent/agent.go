@@ -33,9 +33,9 @@ func (a *Agent) Run() {
 			a.collectMetrics()
 		case <-sendTicker.C:
 			a.sendMetrics()
+			// a.sendMetricsBatch()
 		}
 	}
-
 }
 
 func (a *Agent) sendMetrics() {
@@ -43,6 +43,10 @@ func (a *Agent) sendMetrics() {
 	for k, v := range a.metrics {
 		v.Send(k, a.options.EndpointAddr)
 	}
+}
+func (a Agent) sendMetricsBatch() {
+	logger.Log.Info("Strart send batch metrics")
+	a.metrics.SendBatch(a.options.EndpointAddr)
 }
 
 func setGauge[Numeric constraints.Float | constraints.Integer](m metrics, name string, v Numeric) {

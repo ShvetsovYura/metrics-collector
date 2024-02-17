@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"os/signal"
+	"syscall"
+
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/server"
 )
@@ -14,9 +18,12 @@ func main() {
 	if err := opts.ParseEnvs(); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
+	logger.Log.Info(*opts)
 	srv := server.NewServer(40, opts)
 	logger.Log.Infof("Start server with options: %v", *opts)
-	if err := srv.Run(); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
+	defer stop()
+	if err := srv.Run(ctx); err != nil {
 		panic(err)
 	}
 }

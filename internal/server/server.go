@@ -3,48 +3,59 @@ package server
 import (
 	"context"
 	"net/http"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/db"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 )
 
+type StorageCloser interface {
+	Save() error
+}
+
 type Server struct {
-	// metrics     *memory.MemStorage
-	storage *file.FileStorage
-	options *ServerOptions
+	storage   StorageCloser
+	webserver *http.Server
+	options   *ServerOptions
 }
 
 func NewServer(metricsCount int, opt *ServerOptions) *Server {
-	immediatelySave := false
-	if opt.StoreInterval == 0 {
-		immediatelySave = true
+
+	var targetStorage handlers.Storage
+
+	dbCtx := context.Background()
+
+	if opt.DBDSN == "" {
+		if opt.FileStoragePath == "" {
+			targetStorage = memory.NewMemStorage(metricsCount)
+		} else {
+			targetStorage = file.NewFileStorage(opt.FileStoragePath, metricsCount, opt.Restore, opt.StoreInterval)
+		}
+	} else {
+		dbStorage, err := db.NewDBPool(dbCtx, opt.DBDSN)
+		if err != nil {
+			logger.Log.Fatal("Не удалось подключиться к БД!")
+		}
+		targetStorage = dbStorage
 	}
-	fileStorage := file.NewFileStorage(opt.FileStoragePath, metricsCount, immediatelySave)
 	return &Server{
-		storage: fileStorage,
+		storage: targetStorage,
+		webserver: &http.Server{
+			Addr:    opt.EndpointAddr,
+			Handler: handlers.ServerRouter(targetStorage),
+		},
 		options: opt,
 	}
 }
 
-func (s *Server) Run() error {
-	if s.options.Restore {
-		s.storage.RestoreFromFile()
-	}
+func (s *Server) Run(ctx context.Context) error {
 
-	router := handlers.ServerRouter(s.storage)
-	srv := &http.Server{
-		Addr:    s.options.EndpointAddr,
-		Handler: router,
-	}
+	logger.Log.Info("START HTTP SERVER")
 	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
-	// https://habr.com/ru/articles/771626/
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
-	defer stop()
 
 	var wg sync.WaitGroup
 
@@ -56,17 +67,20 @@ func (s *Server) Run() error {
 			select {
 			case <-ctx.Done():
 				logger.Log.Info("Останавливаю http сервер...")
-				srv.Shutdown(ctx)
+				s.webserver.Shutdown(ctx)
 				logger.Log.Info("http сервер остановлен!")
-				s.storage.SaveToFile()
+
+				err := s.storage.Save()
+				if err != nil {
+					logger.Log.Error(err)
+				}
 				return
 			case <-ticker.C:
-				s.storage.SaveToFile()
+				s.storage.Save()
 			}
 		}
 	}()
-
-	srv.ListenAndServe()
+	s.webserver.ListenAndServe()
 	wg.Wait()
 	return nil
 }
