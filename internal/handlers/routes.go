@@ -26,7 +26,7 @@ type Storage interface {
 	SaveCountersBatch(context.Context, map[string]metric.Counter) error
 }
 
-func ServerRouter(s Storage) chi.Router {
+func ServerRouter(s Storage, key string) chi.Router {
 
 	logger.NewHTTPLogger()
 
@@ -34,6 +34,9 @@ func ServerRouter(s Storage) chi.Router {
 
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 	r.Use(httplog.RequestLogger(logger.HTTPLogger))
+	if key != "" {
+		r.Use(middlewares.HashCheck)
+	}
 
 	r.Get("/", middlewares.WithUnzipRequest(MetricGetCurrentValuesHandler(s)))
 	r.Post(fmt.Sprintf("/update/{%s}/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam, internal.MetricValuePathParam), middlewares.WithUnzipRequest(MetricUpdateHandler(s)))

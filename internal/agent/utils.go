@@ -3,8 +3,6 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto/sha256"
-	"encoding/hex"
 	"io"
 	"net/http"
 
@@ -38,7 +36,7 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 	req.Header.Add("Content-Type", contentType)
 	req.Header.Add("Accept-Encoding", "gzip")
 	if key != "" {
-		hash := Hash(buf.Bytes(), key)
+		hash := util.Hash(buf.Bytes(), key)
 		req.Header.Add("HashSHA256", hash)
 	}
 	client := http.Client{}
@@ -48,11 +46,4 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 	}
 	defer resp.Body.Close()
 	return nil
-}
-
-func Hash(value []byte, key string) string {
-	h := sha256.New()
-	h.Write(value)
-	res := h.Sum(nil)
-	return hex.EncodeToString(res)
 }

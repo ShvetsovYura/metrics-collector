@@ -52,5 +52,4 @@ func WithUnzipRequest(h http.HandlerFunc) http.HandlerFunc {
 
 		h.ServeHTTP(w, r)
 	}
-
 }

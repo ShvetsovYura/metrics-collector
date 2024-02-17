@@ -1,10 +1,8 @@
 package util
 
 import (
-	"bytes"
-	"net/http"
-
-	"golang.org/x/exp/constraints"
+	"crypto/sha256"
+	"encoding/hex"
 )
 
 func Contains(s []string, v string) bool {
@@ -16,17 +14,9 @@ func Contains(s []string, v string) bool {
 	return false
 }
 
-func SendRequest(link string, contentType string, body []byte) error {
-
-	reader := bytes.NewReader(body)
-	resp, err := http.Post(link, contentType, reader)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
-func SaveOne[T constraints.Integer | constraints.Float](metricName string, metricValue T) {
-
+func Hash(value []byte, key string) string {
+	h := sha256.New()
+	h.Write(value)
+	res := h.Sum(nil)
+	return hex.EncodeToString(res)
 }
