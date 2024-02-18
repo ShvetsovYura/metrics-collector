@@ -112,7 +112,7 @@ func MetricGetValueHandler(m Getter) http.HandlerFunc {
 
 }
 
-func MetricUpdateHandlerWithBody(m GetterSetter) http.HandlerFunc {
+func MetricUpdateHandlerWithBody(m GetterSetter, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		e := &models.Metrics{}
@@ -164,13 +164,15 @@ func MetricUpdateHandlerWithBody(m GetterSetter) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
+		if key != "" {
+			w.Header().Add("HashSHA256", util.Hash(marshalVal, key))
+		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(marshalVal)
 	}
 }
 
-func MetricGetValueHandlerWithBody(m Getter) http.HandlerFunc {
+func MetricGetValueHandlerWithBody(m Getter, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		entity := models.Metrics{}
@@ -224,7 +226,9 @@ func MetricGetValueHandlerWithBody(m Getter) http.HandlerFunc {
 			}
 			answer = val
 		}
-
+		if key != "" {
+			w.Header().Add("HashSHA256", util.Hash(answer, key))
+		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(answer)
 	}

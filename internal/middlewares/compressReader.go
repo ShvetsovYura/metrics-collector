@@ -35,8 +35,8 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
-func WithUnzipRequest(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func WithUnzipRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// распаковка входящих сжатых данных
 		contentEncoding := r.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
@@ -50,6 +50,6 @@ func WithUnzipRequest(h http.HandlerFunc) http.HandlerFunc {
 			defer cr.Close()
 		}
 
-		h.ServeHTTP(w, r)
-	}
+		next.ServeHTTP(w, r)
+	})
 }

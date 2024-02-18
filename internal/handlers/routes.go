@@ -32,18 +32,25 @@ func ServerRouter(s Storage, key string) chi.Router {
 
 	r := chi.NewRouter()
 
+	r.Use(middlewares.CheckHashHeader(key))
+	// hash := middlewares.CheckHashHeader(key)
+	// compress := middleware.Compress(5, "application/json", "text/html")
+	// unzip := middlewares.WithUnzipRequest
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 	r.Use(httplog.RequestLogger(logger.HTTPLogger))
-	if key != "" {
-		r.Use(middlewares.HashCheck)
-	}
+	r.Use(middlewares.WithUnzipRequest)
 
-	r.Get("/", middlewares.WithUnzipRequest(MetricGetCurrentValuesHandler(s)))
-	r.Post(fmt.Sprintf("/update/{%s}/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam, internal.MetricValuePathParam), middlewares.WithUnzipRequest(MetricUpdateHandler(s)))
-	r.Get(fmt.Sprintf("/value/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam), middlewares.WithUnzipRequest(MetricGetValueHandler(s)))
-	r.Post("/update/", middlewares.WithUnzipRequest(MetricUpdateHandlerWithBody(s)))
-	r.Post("/updates/", middlewares.WithUnzipRequest(MetricBatchUpdateHandler(s)))
-	r.Post("/value/", middlewares.WithUnzipRequest(MetricGetValueHandlerWithBody(s)))
+	r.Get("/", MetricGetCurrentValuesHandler(s))
+
+	pattern := fmt.Sprintf("/update/{%s}/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam, internal.MetricValuePathParam)
+	r.Post(pattern, MetricUpdateHandler(s))
+
+	pattern = fmt.Sprintf("/value/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam)
+	r.Get(pattern, MetricGetValueHandler(s))
+
+	r.Post("/update/", MetricUpdateHandlerWithBody(s, key))
+	r.Post("/updates/", MetricBatchUpdateHandler(s))
+	r.Post("/value/", MetricGetValueHandlerWithBody(s, key))
 	r.Get("/ping", DBPingHandler(s))
 
 	return r
