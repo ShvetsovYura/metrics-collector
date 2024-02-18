@@ -32,13 +32,12 @@ func ServerRouter(s Storage, key string) chi.Router {
 
 	r := chi.NewRouter()
 
-	r.Use(middlewares.CheckHashHeader(key))
-	// hash := middlewares.CheckHashHeader(key)
-	// compress := middleware.Compress(5, "application/json", "text/html")
-	// unzip := middlewares.WithUnzipRequest
+	r.Use(middlewares.CheckReqestHashHeader(key))
+
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 	r.Use(httplog.RequestLogger(logger.HTTPLogger))
 	r.Use(middlewares.WithUnzipRequest)
+	r.Use(middlewares.ResposeHeaderWithHash(key))
 
 	r.Get("/", MetricGetCurrentValuesHandler(s))
 
@@ -48,9 +47,9 @@ func ServerRouter(s Storage, key string) chi.Router {
 	pattern = fmt.Sprintf("/value/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam)
 	r.Get(pattern, MetricGetValueHandler(s))
 
-	r.Post("/update/", MetricUpdateHandlerWithBody(s, key))
+	r.Post("/update/", MetricUpdateHandlerWithBody(s))
 	r.Post("/updates/", MetricBatchUpdateHandler(s))
-	r.Post("/value/", MetricGetValueHandlerWithBody(s, key))
+	r.Post("/value/", MetricGetValueHandlerWithBody(s))
 	r.Get("/ping", DBPingHandler(s))
 
 	return r

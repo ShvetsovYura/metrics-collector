@@ -74,7 +74,6 @@ func MetricUpdateHandler(m Setter) http.HandlerFunc {
 
 		}
 		w.WriteHeader(http.StatusOK)
-
 	}
 }
 
@@ -91,8 +90,8 @@ func MetricGetValueHandler(m Getter) http.HandlerFunc {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
+			w.WriteHeader(http.StatusOK)
 
 		case internal.InCounterName:
 			v, err := m.GetCounter(ctx, mName)
@@ -100,8 +99,8 @@ func MetricGetValueHandler(m Getter) http.HandlerFunc {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
+			w.WriteHeader(http.StatusOK)
 
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -112,7 +111,7 @@ func MetricGetValueHandler(m Getter) http.HandlerFunc {
 
 }
 
-func MetricUpdateHandlerWithBody(m GetterSetter, key string) http.HandlerFunc {
+func MetricUpdateHandlerWithBody(m GetterSetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		e := &models.Metrics{}
@@ -164,15 +163,13 @@ func MetricUpdateHandlerWithBody(m GetterSetter, key string) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if key != "" {
-			w.Header().Add("HashSHA256", util.Hash(marshalVal, key))
-		}
-		w.WriteHeader(http.StatusOK)
+
 		w.Write(marshalVal)
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func MetricGetValueHandlerWithBody(m Getter, key string) http.HandlerFunc {
+func MetricGetValueHandlerWithBody(m Getter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		entity := models.Metrics{}
@@ -226,11 +223,8 @@ func MetricGetValueHandlerWithBody(m Getter, key string) http.HandlerFunc {
 			}
 			answer = val
 		}
-		if key != "" {
-			w.Header().Add("HashSHA256", util.Hash(answer, key))
-		}
-		w.WriteHeader(http.StatusOK)
 		w.Write(answer)
+		w.WriteHeader(http.StatusOK)
 	}
 
 }
@@ -239,13 +233,13 @@ func MetricGetCurrentValuesHandler(m Lister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
 		mList, err := m.ToList(ctx)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		io.WriteString(w, strings.Join(mList, ", "))
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
