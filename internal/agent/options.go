@@ -12,6 +12,7 @@ type AgentOptions struct {
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PoolInterval   int    `env:"POLL_INTERVAL"`
 	Key            string `env:"KEY"`
+	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
 func (o *AgentOptions) ParseArgs() {
@@ -19,6 +20,7 @@ func (o *AgentOptions) ParseArgs() {
 	flag.IntVar(&o.PoolInterval, "p", 2, "metrics gather interval")
 	flag.IntVar(&o.ReportInterval, "r", 10, "interval send metrics to server")
 	flag.StringVar(&o.Key, "k", "", "Secret key")
+	flag.IntVar(&o.RateLimit, "l", 0, "limit concurent")
 	flag.Parse()
 }
 func (o *AgentOptions) ParseEnvs() error {
