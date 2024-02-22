@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os/signal"
+	"syscall"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/agent"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
@@ -20,6 +23,8 @@ func main() {
 	a := agent.NewAgent(metricsCount, opts)
 
 	logger.Log.Info("Start agent app")
-	a.Run()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
+	defer stop()
+	a.Run(ctx)
 
 }
