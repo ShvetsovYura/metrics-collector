@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
@@ -13,6 +14,7 @@ type Metric interface {
 }
 
 type MemStorage struct {
+	mx            sync.Mutex
 	gaugeMetrics  map[string]metric.Gauge
 	counterMetric map[string]metric.Counter
 }
@@ -26,12 +28,16 @@ func NewMemStorage(metricsCount int) *MemStorage {
 }
 
 func (m *MemStorage) SetGauge(ctx context.Context, name string, val float64) error {
+	m.mx.Lock()
 	m.gaugeMetrics[name] = metric.Gauge(val)
+	m.mx.Unlock()
 	return nil
 }
 
 func (m *MemStorage) SetCounter(ctx context.Context, name string, val int64) error {
+	m.mx.Lock()
 	m.counterMetric[name] += metric.Counter(val)
+	m.mx.Unlock()
 	return nil
 }
 

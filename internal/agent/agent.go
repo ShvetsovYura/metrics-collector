@@ -139,7 +139,6 @@ func (a Agent) sendMetricsBatch() error {
 
 func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
 	logger.Log.Info("start process metrics")
-	var mx sync.Mutex
 	for m := range metricsCh {
 		a.metrics[m.ID] = m
 	}
