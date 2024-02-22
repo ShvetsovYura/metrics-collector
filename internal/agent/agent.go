@@ -87,14 +87,14 @@ func (a *Agent) senderWorker(items <-chan MetricItem) {
 	for m := range items {
 		link := "http://" + a.options.EndpointAddr + "/update/"
 		var data []byte
-		if m.MType == GAUGE_TYPE_NAME {
+		if m.MType == GaugeTypeName {
 			data, _ = json.Marshal(Metric{
 				ID:    m.ID,
 				MType: m.MType,
 				Value: &m.Value,
 			})
 		}
-		if m.MType == COUNTER_TYPE_NAME {
+		if m.MType == CounterTypeName {
 			data, _ = json.Marshal(Metric{
 				ID:    m.ID,
 				MType: m.MType,
@@ -103,7 +103,7 @@ func (a *Agent) senderWorker(items <-chan MetricItem) {
 		}
 
 		logger.Log.Info(string(data))
-		sendMetric(data, link, DEFAULT_CONTENT_TYPE, a.options.Key)
+		sendMetric(data, link, DefaultContentType, a.options.Key)
 	}
 }
 
@@ -112,14 +112,14 @@ func (a Agent) sendMetricsBatch() error {
 	metricsBatch := make([]Metric, 0, len(a.metrics))
 	for _, m := range a.metrics {
 		var m_ Metric
-		if m.MType == GAUGE_TYPE_NAME {
+		if m.MType == GaugeTypeName {
 			m_ = Metric{
 				ID:    m.ID,
 				MType: m.MType,
 				Value: &m.Value,
 			}
 		}
-		if m.MType == COUNTER_TYPE_NAME {
+		if m.MType == CounterTypeName {
 			m_ = Metric{
 				ID:    m.ID,
 				MType: m.MType,
@@ -133,7 +133,7 @@ func (a Agent) sendMetricsBatch() error {
 	if err != nil {
 		return err
 	}
-	sendMetric(data, link, DEFAULT_CONTENT_TYPE, a.options.Key)
+	sendMetric(data, link, DefaultContentType, a.options.Key)
 	return nil
 }
 
@@ -143,12 +143,12 @@ func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
 		a.metrics[m.ID] = m
 	}
 	var newVal int64 = 0
-	if v, ok := a.metrics[COUNTER_FIELD_NAME]; ok {
+	if v, ok := a.metrics[CounterFieldName]; ok {
 		newVal = v.Delta + 1
 	}
-	a.metrics[COUNTER_FIELD_NAME] = MetricItem{
-		ID:    COUNTER_FIELD_NAME,
-		MType: COUNTER_TYPE_NAME,
+	a.metrics[CounterFieldName] = MetricItem{
+		ID:    CounterFieldName,
+		MType: CounterTypeName,
 		Delta: newVal,
 		Value: -1,
 	}
@@ -156,7 +156,7 @@ func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
 
 }
 func makeGaugeMetricItem(name string, val float64) MetricItem {
-	return MetricItem{ID: name, MType: GAUGE_TYPE_NAME, Value: val, Delta: -1}
+	return MetricItem{ID: name, MType: GaugeTypeName, Value: val, Delta: -1}
 }
 
 func (a *Agent) collectMetricsGenerator(ctx context.Context) chan MetricItem {
