@@ -29,6 +29,7 @@ type MetricItem struct {
 }
 
 type Agent struct {
+	mx      sync.Mutex
 	metrics map[string]MetricItem
 	options *AgentOptions
 }
@@ -41,45 +42,57 @@ func NewAgent(metricsCount int, options *AgentOptions) *Agent {
 }
 
 func (a *Agent) Run(ctx context.Context) {
-	sendTicker := time.NewTicker(time.Duration(a.options.ReportInterval) * time.Second)
-	defer sendTicker.Stop()
+	go a.collectMetrics(ctx)
+	go a.sendMetrics(ctx)
+	<-ctx.Done()
+	logger.Log.Info("end agent app")
+}
+
+func (a *Agent) collectMetrics(ctx context.Context) {
 	collectTicker := time.NewTicker(time.Duration(a.options.PoolInterval) * time.Second)
 	defer collectTicker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-collectTicker.C:
 			metricsCh := a.collectMetricsGenerator(ctx)
-			addMetricsCh := a.collentAdditionalMetricsGenerator(ctx)
-			go multipllexChannels(ctx, metricsCh, addMetricsCh)
-			go a.processMetrics(metricsCh)
-		case <-sendTicker.C:
-			go a.sendMetrics(ctx)
+			addMetricsCh := a.collectAdditionalMetricsGenerator(ctx)
+			allMetricsCh := multiplexChannels(ctx, metricsCh, addMetricsCh)
+			go a.processMetrics(allMetricsCh)
 		}
 	}
 }
 
 func (a *Agent) sendMetrics(ctx context.Context) {
-	logger.Log.Info("start send")
-	var toSend = make(chan MetricItem, len(a.metrics))
-	for _, v := range a.metrics {
-		toSend <- v
-	}
-	if a.options.RateLimit == 0 {
-		for w := 0; w < len(a.metrics); w++ {
-			go a.senderWorker(toSend)
-		}
-	} else {
-		for w := 0; w < a.options.RateLimit; w++ {
-			go a.senderWorker(toSend)
-		}
+	var toSend = make(chan MetricItem, 100)
+	sendTicker := time.NewTicker(time.Duration(a.options.ReportInterval) * time.Second)
+	defer sendTicker.Stop()
 
+	for {
+		select {
+		case <-ctx.Done():
+			close(toSend)
+			return
+		case <-sendTicker.C:
+			logger.Log.Info("start send")
+			a.mx.Lock()
+			for _, v := range a.metrics {
+				toSend <- v
+			}
+			a.mx.Unlock()
+			if a.options.RateLimit == 0 {
+				for w := 0; w < len(a.metrics); w++ {
+					go a.senderWorker(toSend)
+				}
+			} else {
+				for w := 0; w < a.options.RateLimit; w++ {
+					go a.senderWorker(toSend)
+				}
+			}
+			logger.Log.Info("end send")
+		}
 	}
-
-	close(toSend)
-	logger.Log.Info("end send")
 }
 
 func (a *Agent) senderWorker(items <-chan MetricItem) {
@@ -107,41 +120,43 @@ func (a *Agent) senderWorker(items <-chan MetricItem) {
 	}
 }
 
-func (a Agent) sendMetricsBatch() error {
-	logger.Log.Info("Strart send batch metrics")
-	metricsBatch := make([]Metric, 0, len(a.metrics))
-	for _, m := range a.metrics {
-		var m_ Metric
-		if m.MType == GaugeTypeName {
-			m_ = Metric{
-				ID:    m.ID,
-				MType: m.MType,
-				Value: &m.Value,
-			}
-		}
-		if m.MType == CounterTypeName {
-			m_ = Metric{
-				ID:    m.ID,
-				MType: m.MType,
-				Delta: &m.Delta,
-			}
-		}
-		metricsBatch = append(metricsBatch, m_)
-	}
-	link := "http://" + a.options.EndpointAddr + "/updates/"
-	data, err := json.Marshal(metricsBatch)
-	if err != nil {
-		return err
-	}
-	sendMetric(data, link, DefaultContentType, a.options.Key)
-	return nil
-}
+// func (a Agent) sendMetricsBatch() error {
+// 	logger.Log.Info("Strart send batch metrics")
+// 	metricsBatch := make([]Metric, 0, len(a.metrics))
+// 	for _, m := range a.metrics {
+// 		var m_ Metric
+// 		if m.MType == GaugeTypeName {
+// 			m_ = Metric{
+// 				ID:    m.ID,
+// 				MType: m.MType,
+// 				Value: &m.Value,
+// 			}
+// 		}
+// 		if m.MType == CounterTypeName {
+// 			m_ = Metric{
+// 				ID:    m.ID,
+// 				MType: m.MType,
+// 				Delta: &m.Delta,
+// 			}
+// 		}
+// 		metricsBatch = append(metricsBatch, m_)
+// 	}
+// 	link := "http://" + a.options.EndpointAddr + "/updates/"
+// 	data, err := json.Marshal(metricsBatch)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	sendMetric(data, link, DefaultContentType, a.options.Key)
+// 	return nil
+// }
 
 func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
 	logger.Log.Info("start process metrics")
+	a.mx.Lock()
 	for m := range metricsCh {
 		a.metrics[m.ID] = m
 	}
+	a.mx.Unlock()
 	var newVal int64 = 0
 	if v, ok := a.metrics[CounterFieldName]; ok {
 		newVal = v.Delta + 1
@@ -202,11 +217,11 @@ func (a *Agent) collectMetricsGenerator(ctx context.Context) chan MetricItem {
 
 }
 
-func (a *Agent) collentAdditionalMetricsGenerator(ctx context.Context) chan MetricItem {
+func (a *Agent) collectAdditionalMetricsGenerator(ctx context.Context) chan MetricItem {
 	var outCh = make(chan MetricItem)
 
-	m, _ := mem.VirtualMemory()
 	go func() {
+		m, _ := mem.VirtualMemory()
 		defer close(outCh)
 		outCh <- makeGaugeMetricItem("TotalMemory", float64(m.Total))
 		outCh <- makeGaugeMetricItem("FreeMemory", float64(m.Free))
@@ -219,7 +234,7 @@ func (a *Agent) collentAdditionalMetricsGenerator(ctx context.Context) chan Metr
 	return outCh
 }
 
-func multipllexChannels(ctx context.Context, channels ...chan MetricItem) chan MetricItem {
+func multiplexChannels(ctx context.Context, channels ...chan MetricItem) chan MetricItem {
 	resultCh := make(chan MetricItem)
 	wg := &sync.WaitGroup{}
 
@@ -237,13 +252,10 @@ func multipllexChannels(ctx context.Context, channels ...chan MetricItem) chan M
 			}
 		}()
 
-		go func() {
-			wg.Wait()
-			if _, ok := <-resultCh; ok {
-				close(resultCh)
-			}
-		}()
-
 	}
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
 	return resultCh
 }
