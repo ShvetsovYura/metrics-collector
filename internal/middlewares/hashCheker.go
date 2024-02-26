@@ -10,7 +10,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
-func CheckReqestHashHeader(key string) func(next http.Handler) http.Handler {
+func CheckRequestHashHeader(key string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			body, err := io.ReadAll(r.Body)

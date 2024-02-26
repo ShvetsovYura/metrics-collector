@@ -32,7 +32,7 @@ func ServerRouter(s Storage, key string) chi.Router {
 
 	r := chi.NewRouter()
 
-	r.Use(middlewares.CheckReqestHashHeader(key))
+	r.Use(middlewares.CheckRequestHashHeader(key))
 
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 	r.Use(httplog.RequestLogger(logger.HTTPLogger))
