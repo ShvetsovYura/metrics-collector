@@ -22,7 +22,7 @@ func CheckRequestHashHeader(key string) func(next http.Handler) http.Handler {
 			if key != "" && hashHeader != "" {
 				hash := util.Hash(body, key)
 				if hashHeader != hash {
-					w.WriteHeader(http.StatusTeapot)
+					w.WriteHeader(http.StatusBadRequest)
 					logger.Log.Infof("key %s hashHeader: %s hash: %s", key, hashHeader, hash)
 					return
 				}
