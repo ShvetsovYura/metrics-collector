@@ -17,34 +17,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// type Setter interface {
-// 	SetGauge(ctx context.Context, name string, val float64) error
-// 	SetCounter(ctx context.Context, name string, val int64) error
-// }
-
-// type Getter interface {
-// 	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
-// 	GetCounter(ctx context.Context, name string) (metric.Counter, error)
-// }
-
-// type Lister interface {
-// 	ToList(ctx context.Context) ([]string, error)
-// }
-
-// type GetterSetter interface {
-// 	Setter
-// 	Getter
-// }
-
-// type Pinger interface {
-// 	Ping(ctx context.Context) error
-// }
-
-// type BatchSaver interface {
-// 	SaveGaugesBatch(context.Context, map[string]metric.Gauge) error
-// 	SaveCountersBatch(context.Context, map[string]metric.Counter) error
-// }
-
 func MetricUpdateHandler(m StorageWriter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)

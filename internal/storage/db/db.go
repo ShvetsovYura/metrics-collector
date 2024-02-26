@@ -223,3 +223,11 @@ func (db *DBStore) SaveCountersBatch(ctx context.Context, counters map[string]me
 	}
 	return tx.Commit(ctx)
 }
+
+func (db *DBStore) Save() error {
+	return nil
+}
+
+func (db *DBStore) Restore(ctx context.Context) error {
+	return nil
+}

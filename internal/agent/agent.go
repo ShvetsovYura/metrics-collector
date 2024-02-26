@@ -96,7 +96,6 @@ func (a *Agent) sendMetrics(ctx context.Context) {
 }
 
 func (a *Agent) senderWorker(items <-chan MetricItem) {
-	logger.Log.Info("__worker")
 	for m := range items {
 		link := "http://" + a.options.EndpointAddr + "/update/"
 		var data []byte
@@ -115,43 +114,11 @@ func (a *Agent) senderWorker(items <-chan MetricItem) {
 			})
 		}
 
-		logger.Log.Info(string(data))
 		sendMetric(data, link, DefaultContentType, a.options.Key)
 	}
 }
 
-// func (a Agent) sendMetricsBatch() error {
-// 	logger.Log.Info("Strart send batch metrics")
-// 	metricsBatch := make([]Metric, 0, len(a.metrics))
-// 	for _, m := range a.metrics {
-// 		var m_ Metric
-// 		if m.MType == GaugeTypeName {
-// 			m_ = Metric{
-// 				ID:    m.ID,
-// 				MType: m.MType,
-// 				Value: &m.Value,
-// 			}
-// 		}
-// 		if m.MType == CounterTypeName {
-// 			m_ = Metric{
-// 				ID:    m.ID,
-// 				MType: m.MType,
-// 				Delta: &m.Delta,
-// 			}
-// 		}
-// 		metricsBatch = append(metricsBatch, m_)
-// 	}
-// 	link := "http://" + a.options.EndpointAddr + "/updates/"
-// 	data, err := json.Marshal(metricsBatch)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	sendMetric(data, link, DefaultContentType, a.options.Key)
-// 	return nil
-// }
-
 func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
-	logger.Log.Info("start process metrics")
 	a.mx.Lock()
 	for m := range metricsCh {
 		a.metrics[m.ID] = m
@@ -167,8 +134,6 @@ func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
 		Delta: newVal,
 		Value: -1,
 	}
-	logger.Log.Infof("end process metrics %v %v", len(metricsCh), len(a.metrics))
-
 }
 func makeGaugeMetricItem(name string, val float64) MetricItem {
 	return MetricItem{ID: name, MType: GaugeTypeName, Value: val, Delta: -1}
@@ -177,12 +142,10 @@ func makeGaugeMetricItem(name string, val float64) MetricItem {
 func (a *Agent) collectMetricsGenerator(ctx context.Context) chan MetricItem {
 	outCh := make(chan MetricItem)
 
-	var rtm runtime.MemStats
-	runtime.ReadMemStats(&rtm)
-
 	go func() {
+		var rtm runtime.MemStats
+		runtime.ReadMemStats(&rtm)
 		defer close(outCh)
-		logger.Log.Info("start collect metrics")
 		outCh <- makeGaugeMetricItem("HeapSys", float64(rtm.HeapSys))
 		outCh <- makeGaugeMetricItem("Alloc", float64(rtm.Alloc))
 		outCh <- makeGaugeMetricItem("BuckHashSys", float64(rtm.BuckHashSys))
@@ -211,7 +174,6 @@ func (a *Agent) collectMetricsGenerator(ctx context.Context) chan MetricItem {
 		outCh <- makeGaugeMetricItem("Sys", float64(rtm.Sys))
 		outCh <- makeGaugeMetricItem("TotalAlloc", float64(rtm.TotalAlloc))
 		outCh <- makeGaugeMetricItem("RandomValue", rand.Float64())
-		logger.Log.Info("end collect metrics")
 	}()
 	return outCh
 

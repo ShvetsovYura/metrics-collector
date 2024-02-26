@@ -87,3 +87,9 @@ func (m *MemStorage) SaveGaugesBatch(ctx context.Context, gauges map[string]metr
 func (m *MemStorage) SaveCountersBatch(ctx context.Context, couters map[string]metric.Counter) error {
 	return nil
 }
+func (m *MemStorage) Save() error {
+	return nil
+}
+func (m *MemStorage) Restore(ctx context.Context) error {
+	return nil
+}
