@@ -29,7 +29,7 @@ type MetricItem struct {
 }
 
 type Agent struct {
-	mx      sync.Mutex
+	mx      sync.RWMutex
 	metrics map[string]MetricItem
 	options *AgentOptions
 }
@@ -42,6 +42,7 @@ func NewAgent(metricsCount int, options *AgentOptions) *Agent {
 }
 
 func (a *Agent) Run(ctx context.Context) {
+
 	go a.collectMetrics(ctx)
 	go a.sendMetrics(ctx)
 	<-ctx.Done()
@@ -76,11 +77,11 @@ func (a *Agent) sendMetrics(ctx context.Context) {
 			return
 		case <-sendTicker.C:
 			logger.Log.Info("start send")
-			a.mx.Lock()
+			a.mx.RLock()
 			for _, v := range a.metrics {
 				toSend <- v
 			}
-			a.mx.Unlock()
+			a.mx.RUnlock()
 			if a.options.RateLimit == 0 {
 				for w := 0; w < len(a.metrics); w++ {
 					go a.senderWorker(toSend)

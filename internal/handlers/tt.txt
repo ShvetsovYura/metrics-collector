@@ -1,6 +1,0 @@
-{
-  "gauges": {
-    "Alloc": 3.4
-  },
-  "counters": {}
-}
