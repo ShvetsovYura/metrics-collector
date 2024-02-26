@@ -42,19 +42,22 @@ func NewAgent(metricsCount int, options *AgentOptions) *Agent {
 }
 
 func (a *Agent) Run(ctx context.Context) {
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go a.collectMetrics(ctx, wg)
+	go a.sendMetrics(ctx, wg)
 
-	go a.collectMetrics(ctx)
-	go a.sendMetrics(ctx)
-	<-ctx.Done()
+	wg.Wait()
 	logger.Log.Info("end agent app")
 }
 
-func (a *Agent) collectMetrics(ctx context.Context) {
+func (a *Agent) collectMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	collectTicker := time.NewTicker(time.Duration(a.options.PoolInterval) * time.Second)
 	defer collectTicker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Done()
 			return
 		case <-collectTicker.C:
 			metricsCh := a.collectMetricsGenerator(ctx)
@@ -65,7 +68,7 @@ func (a *Agent) collectMetrics(ctx context.Context) {
 	}
 }
 
-func (a *Agent) sendMetrics(ctx context.Context) {
+func (a *Agent) sendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	var toSend = make(chan MetricItem, 100)
 	sendTicker := time.NewTicker(time.Duration(a.options.ReportInterval) * time.Second)
 	defer sendTicker.Stop()
@@ -74,6 +77,7 @@ func (a *Agent) sendMetrics(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			close(toSend)
+			wg.Done()
 			return
 		case <-sendTicker.C:
 			logger.Log.Info("start send")
@@ -124,7 +128,7 @@ func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
 	for m := range metricsCh {
 		a.metrics[m.ID] = m
 	}
-	a.mx.Unlock()
+
 	var newVal int64 = 0
 	if v, ok := a.metrics[CounterFieldName]; ok {
 		newVal = v.Delta + 1
@@ -135,6 +139,7 @@ func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
 		Delta: newVal,
 		Value: -1,
 	}
+	a.mx.Unlock()
 }
 func makeGaugeMetricItem(name string, val float64) MetricItem {
 	return MetricItem{ID: name, MType: GaugeTypeName, Value: val, Delta: -1}
