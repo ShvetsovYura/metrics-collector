@@ -81,13 +81,6 @@ func (m *MemStorage) Ping(ctx context.Context) error {
 	return errors.New("it's not db. memorystorage")
 }
 
-func (m *MemStorage) Save() error {
-	return nil
-}
-func (m *MemStorage) Restore(ctx context.Context) error {
-	return nil
-}
-
 func (m *MemStorage) SaveGaugesBatch(ctx context.Context, gauges map[string]metric.Gauge) error {
 	return nil
 }

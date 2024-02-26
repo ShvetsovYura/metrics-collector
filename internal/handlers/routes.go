@@ -13,17 +13,22 @@ import (
 	"github.com/go-chi/httplog/v2"
 )
 
-type Storage interface {
-	SetGauge(ctx context.Context, name string, val float64) error
-	SetCounter(ctx context.Context, name string, val int64) error
+type StorageReader interface {
 	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
 	GetCounter(ctx context.Context, name string) (metric.Counter, error)
 	Ping(ctx context.Context) error
 	ToList(ctx context.Context) ([]string, error)
-	Save() error
-	Restore(context.Context) error
+}
+type StorageWriter interface {
+	SetGauge(ctx context.Context, name string, val float64) error
+	SetCounter(ctx context.Context, name string, val int64) error
 	SaveGaugesBatch(context.Context, map[string]metric.Gauge) error
 	SaveCountersBatch(context.Context, map[string]metric.Counter) error
+}
+
+type Storage interface {
+	StorageReader
+	StorageWriter
 }
 
 func ServerRouter(s Storage, key string) chi.Router {

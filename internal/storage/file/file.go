@@ -135,7 +135,6 @@ func (fs *FileStorage) Save() error {
 	}
 	logger.Log.Info("Значения метрик успешно сохранены в файл")
 	return nil
-
 }
 
 func (fs *FileStorage) Restore(ctx context.Context) error {

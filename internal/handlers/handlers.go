@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"strconv"
 
@@ -18,35 +17,35 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type Setter interface {
-	SetGauge(ctx context.Context, name string, val float64) error
-	SetCounter(ctx context.Context, name string, val int64) error
-}
+// type Setter interface {
+// 	SetGauge(ctx context.Context, name string, val float64) error
+// 	SetCounter(ctx context.Context, name string, val int64) error
+// }
 
-type Getter interface {
-	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
-	GetCounter(ctx context.Context, name string) (metric.Counter, error)
-}
+// type Getter interface {
+// 	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
+// 	GetCounter(ctx context.Context, name string) (metric.Counter, error)
+// }
 
-type Lister interface {
-	ToList(ctx context.Context) ([]string, error)
-}
+// type Lister interface {
+// 	ToList(ctx context.Context) ([]string, error)
+// }
 
-type GetterSetter interface {
-	Setter
-	Getter
-}
+// type GetterSetter interface {
+// 	Setter
+// 	Getter
+// }
 
-type Pinger interface {
-	Ping(ctx context.Context) error
-}
+// type Pinger interface {
+// 	Ping(ctx context.Context) error
+// }
 
-type BatchSaver interface {
-	SaveGaugesBatch(context.Context, map[string]metric.Gauge) error
-	SaveCountersBatch(context.Context, map[string]metric.Counter) error
-}
+// type BatchSaver interface {
+// 	SaveGaugesBatch(context.Context, map[string]metric.Gauge) error
+// 	SaveCountersBatch(context.Context, map[string]metric.Counter) error
+// }
 
-func MetricUpdateHandler(m Setter) http.HandlerFunc {
+func MetricUpdateHandler(m StorageWriter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
 		mName := chi.URLParam(r, internal.MetricNamePathParam)
@@ -77,7 +76,7 @@ func MetricUpdateHandler(m Setter) http.HandlerFunc {
 	}
 }
 
-func MetricGetValueHandler(m Getter) http.HandlerFunc {
+func MetricGetValueHandler(m StorageReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
 		mName := chi.URLParam(r, internal.MetricNamePathParam)
@@ -111,7 +110,7 @@ func MetricGetValueHandler(m Getter) http.HandlerFunc {
 
 }
 
-func MetricUpdateHandlerWithBody(m GetterSetter) http.HandlerFunc {
+func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		e := &models.Metrics{}
@@ -169,7 +168,7 @@ func MetricUpdateHandlerWithBody(m GetterSetter) http.HandlerFunc {
 	}
 }
 
-func MetricGetValueHandlerWithBody(m Getter) http.HandlerFunc {
+func MetricGetValueHandlerWithBody(m StorageReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		entity := models.Metrics{}
@@ -229,7 +228,7 @@ func MetricGetValueHandlerWithBody(m Getter) http.HandlerFunc {
 
 }
 
-func MetricGetCurrentValuesHandler(m Lister) http.HandlerFunc {
+func MetricGetCurrentValuesHandler(m StorageReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		w.Header().Set("Content-Type", "text/html")
@@ -243,7 +242,7 @@ func MetricGetCurrentValuesHandler(m Lister) http.HandlerFunc {
 	}
 }
 
-func DBPingHandler(m Pinger) http.HandlerFunc {
+func DBPingHandler(m StorageReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		err := m.Ping(ctx)
@@ -256,7 +255,7 @@ func DBPingHandler(m Pinger) http.HandlerFunc {
 	}
 }
 
-func MetricBatchUpdateHandler(m BatchSaver) http.HandlerFunc {
+func MetricBatchUpdateHandler(m StorageWriter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metricModels []models.Metrics
 		ctx := r.Context()

@@ -179,14 +179,6 @@ func (db *DBStore) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (db *DBStore) Save() error {
-	return nil
-}
-
-func (db *DBStore) Restore(ctx context.Context) error {
-	return nil
-}
-
 func (db *DBStore) SaveGaugesBatch(ctx context.Context, gauges map[string]metric.Gauge) error {
 	logger.Log.Info("save metrics in DBStorage GAUGES")
 	stmt := "insert into gauge(name, value) values(@name, @value) on conflict (name) do update set value=@value"
