@@ -18,6 +18,8 @@ type StorageCloser interface {
 }
 
 type Server struct {
+	// можно было бы вообще без этого интерфейса
+	// но тогда не понятно - как сохранять метрики в файл в `Run`
 	storage   StorageCloser
 	webserver *http.Server
 	options   *ServerOptions
@@ -47,6 +49,8 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 		saverStorage = ts
 	}
 	return &Server{
+		// из-за того, что удалил методы Save и Restore из интерфейса Storage
+		// приходится костылить такое - дублирование стораджа, но с другим интерфейсом
 		storage: saverStorage,
 		webserver: &http.Server{
 			Addr:    opt.EndpointAddr,
@@ -73,7 +77,9 @@ func (s *Server) Run(ctx context.Context) error {
 				logger.Log.Info("Останавливаю http сервер...")
 				s.webserver.Shutdown(ctx)
 				logger.Log.Info("http сервер остановлен!")
-
+				// используется для сохранения метрик в файл
+				// но реализован только для файлового стораджа
+				// в остальных - методы-заглушки
 				err := s.storage.Save()
 				if err != nil {
 					logger.Log.Error(err)
