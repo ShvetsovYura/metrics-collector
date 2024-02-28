@@ -1,3 +1,8 @@
 package agent
 
-const counterMetricFieldName string = "PollCount"
+const (
+	CounterFieldName   string = "PollCount"
+	GaugeTypeName      string = "gauge"
+	CounterTypeName    string = "counter"
+	DefaultContentType string = "application/json"
+)

@@ -9,7 +9,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
-func sendMetric(data []byte, link string, contentType string) error {
+func sendMetric(data []byte, link string, contentType string, key string) error {
 	var buf bytes.Buffer
 	var writer io.Writer
 	if util.Contains([]string{"application/json", "text/html"}, contentType) {
@@ -35,10 +35,14 @@ func sendMetric(data []byte, link string, contentType string) error {
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", contentType)
 	req.Header.Add("Accept-Encoding", "gzip")
+	if key != "" {
+		hash := util.Hash(buf.Bytes(), key)
+		req.Header.Add("HashSHA256", hash)
+	}
 	client := http.Client{}
-	resp, err1 := client.Do(req)
-	if err1 != nil {
-		return err1
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
 	}
 	defer resp.Body.Close()
 	return nil

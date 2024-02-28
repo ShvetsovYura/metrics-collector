@@ -106,7 +106,7 @@ func (fs *FileStorage) RestoreNow() (map[string]float64, map[string]int64, error
 	if err2 != nil {
 		return nil, nil, err2
 	}
-
+	logger.Log.Info(di)
 	return di.Gauges, di.Counters, nil
 
 }
@@ -130,12 +130,12 @@ func (fs *FileStorage) Save() error {
 	}
 
 	err := fs.Dump(g, c)
+
 	if err != nil {
 		return err
 	}
 	logger.Log.Info("Значения метрик успешно сохранены в файл")
 	return nil
-
 }
 
 func (fs *FileStorage) Restore(ctx context.Context) error {

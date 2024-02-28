@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"strconv"
 
@@ -18,20 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type Storage interface {
-	SetGauge(ctx context.Context, name string, val float64) error
-	SetCounter(ctx context.Context, name string, val int64) error
-	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
-	GetCounter(ctx context.Context, name string) (metric.Counter, error)
-	Ping(ctx context.Context) error
-	ToList(ctx context.Context) ([]string, error)
-	Save() error
-	Restore(context.Context) error
-	SaveGaugesBatch(context.Context, map[string]metric.Gauge) error
-	SaveCountersBatch(context.Context, map[string]metric.Counter) error
-}
-
-func MetricUpdateHandler(m Storage) http.HandlerFunc {
+func MetricUpdateHandler(m StorageWriter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
 		mName := chi.URLParam(r, internal.MetricNamePathParam)
@@ -59,11 +45,10 @@ func MetricUpdateHandler(m Storage) http.HandlerFunc {
 
 		}
 		w.WriteHeader(http.StatusOK)
-
 	}
 }
 
-func MetricGetValueHandler(m Storage) http.HandlerFunc {
+func MetricGetValueHandler(m StorageReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
 		mName := chi.URLParam(r, internal.MetricNamePathParam)
@@ -76,8 +61,8 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
+			w.WriteHeader(http.StatusOK)
 
 		case internal.InCounterName:
 			v, err := m.GetCounter(ctx, mName)
@@ -85,8 +70,8 @@ func MetricGetValueHandler(m Storage) http.HandlerFunc {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
 			io.WriteString(w, v.ToString())
+			w.WriteHeader(http.StatusOK)
 
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -150,12 +135,12 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
 		w.Write(marshalVal)
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
+func MetricGetValueHandlerWithBody(m StorageReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		entity := models.Metrics{}
@@ -209,28 +194,27 @@ func MetricGetValueHandlerWithBody(m Storage) http.HandlerFunc {
 			}
 			answer = val
 		}
-
-		w.WriteHeader(http.StatusOK)
 		w.Write(answer)
+		w.WriteHeader(http.StatusOK)
 	}
 
 }
 
-func MetricGetCurrentValuesHandler(m Storage) http.HandlerFunc {
+func MetricGetCurrentValuesHandler(m StorageReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
 		mList, err := m.ToList(ctx)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		io.WriteString(w, strings.Join(mList, ", "))
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func DBPingHandler(m Storage) http.HandlerFunc {
+func DBPingHandler(m StorageReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		err := m.Ping(ctx)
@@ -243,7 +227,7 @@ func DBPingHandler(m Storage) http.HandlerFunc {
 	}
 }
 
-func MetricBatchUpdateHandler(m Storage) http.HandlerFunc {
+func MetricBatchUpdateHandler(m StorageWriter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metricModels []models.Metrics
 		ctx := r.Context()

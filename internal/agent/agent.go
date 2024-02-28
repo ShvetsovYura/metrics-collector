@@ -1,97 +1,233 @@
 package agent
 
 import (
+	"context"
+	"encoding/json"
 	"math/rand"
 	"runtime"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"golang.org/x/exp/constraints"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
+type Metric struct {
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
+type MetricItem struct {
+	ID    string
+	MType string
+	Delta int64
+	Value float64
+}
+
 type Agent struct {
-	metrics metrics
+	mx      sync.RWMutex
+	metrics map[string]MetricItem
 	options *AgentOptions
 }
 
 func NewAgent(metricsCount int, options *AgentOptions) *Agent {
 	return &Agent{
-		metrics: NewMetrics(metricsCount),
+		metrics: make(map[string]MetricItem, metricsCount),
 		options: options,
 	}
 }
 
-func (a *Agent) Run() {
+func (a *Agent) Run(ctx context.Context) {
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go a.collectMetrics(ctx, wg)
+	go a.sendMetrics(ctx, wg)
+
+	wg.Wait()
+	logger.Log.Info("end agent app")
+}
+
+func (a *Agent) collectMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	collectTicker := time.NewTicker(time.Duration(a.options.PoolInterval) * time.Second)
 	defer collectTicker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			wg.Done()
+			return
+		case <-collectTicker.C:
+			metricsCh := a.collectMetricsGenerator(ctx)
+			addMetricsCh := a.collectAdditionalMetricsGenerator(ctx)
+			allMetricsCh := multiplexChannels(ctx, metricsCh, addMetricsCh)
+			go a.processMetrics(allMetricsCh)
+		}
+	}
+}
+
+func (a *Agent) sendMetrics(ctx context.Context, wg *sync.WaitGroup) {
+	var toSend = make(chan MetricItem, 100)
 	sendTicker := time.NewTicker(time.Duration(a.options.ReportInterval) * time.Second)
 	defer sendTicker.Stop()
 
 	for {
 		select {
-		case <-collectTicker.C:
-			a.collectMetrics()
+		case <-ctx.Done():
+			close(toSend)
+			wg.Done()
+			return
 		case <-sendTicker.C:
-			a.sendMetrics()
-			// a.sendMetricsBatch()
+			logger.Log.Info("start send")
+			a.mx.RLock()
+			for _, v := range a.metrics {
+				toSend <- v
+			}
+			a.mx.RUnlock()
+			if a.options.RateLimit == 0 {
+				for w := 0; w < len(a.metrics); w++ {
+					go a.senderWorker(toSend)
+				}
+			} else {
+				for w := 0; w < a.options.RateLimit; w++ {
+					go a.senderWorker(toSend)
+				}
+			}
+			logger.Log.Info("end send")
 		}
 	}
 }
 
-func (a *Agent) sendMetrics() {
-	logger.Log.Info("Start send metrics")
-	for k, v := range a.metrics {
-		v.Send(k, a.options.EndpointAddr)
+func (a *Agent) senderWorker(items <-chan MetricItem) {
+	for m := range items {
+		link := "http://" + a.options.EndpointAddr + "/update/"
+		var data []byte
+		if m.MType == GaugeTypeName {
+			data, _ = json.Marshal(Metric{
+				ID:    m.ID,
+				MType: m.MType,
+				// если не буду ссылаться на поле другой структуры, то всегда по-ссылке
+				// будет последнее значение gauge и для всех одинаковое
+				// поэтому пришлось сделать еще одну структуру в начале файла,
+				// но с полями-значениями, а не ссылками
+				Value: &m.Value,
+			})
+		}
+		if m.MType == CounterTypeName {
+			data, _ = json.Marshal(Metric{
+				ID:    m.ID,
+				MType: m.MType,
+				Delta: &m.Delta,
+			})
+		}
+
+		sendMetric(data, link, DefaultContentType, a.options.Key)
 	}
 }
-func (a Agent) sendMetricsBatch() {
-	logger.Log.Info("Strart send batch metrics")
-	a.metrics.SendBatch(a.options.EndpointAddr)
+
+func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
+	a.mx.Lock()
+	for m := range metricsCh {
+		a.metrics[m.ID] = m
+	}
+
+	var newVal int64 = 0
+	if v, ok := a.metrics[CounterFieldName]; ok {
+		newVal = v.Delta + 1
+	}
+	a.metrics[CounterFieldName] = MetricItem{
+		ID:    CounterFieldName,
+		MType: CounterTypeName,
+		Delta: newVal,
+		Value: -1,
+	}
+	a.mx.Unlock()
+}
+func makeGaugeMetricItem(name string, val float64) MetricItem {
+	return MetricItem{ID: name, MType: GaugeTypeName, Value: val, Delta: -1}
 }
 
-func setGauge[Numeric constraints.Float | constraints.Integer](m metrics, name string, v Numeric) {
-	m[name] = gauge(v)
+func (a *Agent) collectMetricsGenerator(ctx context.Context) chan MetricItem {
+	outCh := make(chan MetricItem)
+
+	go func() {
+		var rtm runtime.MemStats
+		runtime.ReadMemStats(&rtm)
+		defer close(outCh)
+		outCh <- makeGaugeMetricItem("HeapSys", float64(rtm.HeapSys))
+		outCh <- makeGaugeMetricItem("Alloc", float64(rtm.Alloc))
+		outCh <- makeGaugeMetricItem("BuckHashSys", float64(rtm.BuckHashSys))
+		outCh <- makeGaugeMetricItem("Frees", float64(rtm.Frees))
+		outCh <- makeGaugeMetricItem("GCCPUFraction", rtm.GCCPUFraction)
+		outCh <- makeGaugeMetricItem("GCSys", float64(rtm.GCSys))
+		outCh <- makeGaugeMetricItem("HeapAlloc", float64(rtm.HeapAlloc))
+		outCh <- makeGaugeMetricItem("HeapIdle", float64(rtm.HeapIdle))
+		outCh <- makeGaugeMetricItem("HeapInuse", float64(rtm.HeapInuse))
+		outCh <- makeGaugeMetricItem("HeapObjects", float64(rtm.HeapObjects))
+		outCh <- makeGaugeMetricItem("HeapReleased", float64(rtm.HeapReleased))
+		outCh <- makeGaugeMetricItem("LastGC", float64(rtm.LastGC))
+		outCh <- makeGaugeMetricItem("Lookups", float64(rtm.Lookups))
+		outCh <- makeGaugeMetricItem("MCacheInuse", float64(rtm.MCacheInuse))
+		outCh <- makeGaugeMetricItem("MCacheSys", float64(rtm.MCacheSys))
+		outCh <- makeGaugeMetricItem("MSpanInuse", float64(rtm.MSpanInuse))
+		outCh <- makeGaugeMetricItem("MSpanSys", float64(rtm.MSpanSys))
+		outCh <- makeGaugeMetricItem("Mallocs", float64(rtm.Mallocs))
+		outCh <- makeGaugeMetricItem("NextGC", float64(rtm.NextGC))
+		outCh <- makeGaugeMetricItem("NumForcedGC", float64(rtm.NumForcedGC))
+		outCh <- makeGaugeMetricItem("NumGC", float64(rtm.NumGC))
+		outCh <- makeGaugeMetricItem("OtherSys", float64(rtm.OtherSys))
+		outCh <- makeGaugeMetricItem("PauseTotalNs", float64(rtm.PauseTotalNs))
+		outCh <- makeGaugeMetricItem("StackInuse", float64(rtm.StackInuse))
+		outCh <- makeGaugeMetricItem("StackSys", float64(rtm.StackSys))
+		outCh <- makeGaugeMetricItem("Sys", float64(rtm.Sys))
+		outCh <- makeGaugeMetricItem("TotalAlloc", float64(rtm.TotalAlloc))
+		outCh <- makeGaugeMetricItem("RandomValue", rand.Float64())
+	}()
+	return outCh
+
 }
 
-func (a *Agent) setCounter() error {
-	val := a.metrics[counterMetricFieldName]
-	a.metrics["PollCount"] = val.(counter) + counter(1)
-	return nil
+func (a *Agent) collectAdditionalMetricsGenerator(ctx context.Context) chan MetricItem {
+	var outCh = make(chan MetricItem)
+
+	go func() {
+		m, _ := mem.VirtualMemory()
+		defer close(outCh)
+		outCh <- makeGaugeMetricItem("TotalMemory", float64(m.Total))
+		outCh <- makeGaugeMetricItem("FreeMemory", float64(m.Free))
+
+		cpuUtilizations, _ := cpu.Percent(0, true)
+		for i, c := range cpuUtilizations {
+			outCh <- makeGaugeMetricItem("CPUutilization"+strconv.Itoa(i), c)
+		}
+	}()
+	return outCh
 }
 
-func (a *Agent) collectMetrics() {
-	var rtm runtime.MemStats
+func multiplexChannels(ctx context.Context, channels ...chan MetricItem) chan MetricItem {
+	resultCh := make(chan MetricItem)
+	wg := &sync.WaitGroup{}
 
-	runtime.ReadMemStats(&rtm)
+	for _, ch := range channels {
+		wg.Add(1)
+		chClosure := ch
+		go func() {
+			defer wg.Done()
+			for item := range chClosure {
+				select {
+				case <-ctx.Done():
+					return
+				case resultCh <- item:
+				}
+			}
+		}()
 
-	setGauge(a.metrics, "HeapSys", rtm.HeapSys)
-	setGauge(a.metrics, "Alloc", rtm.Alloc)
-	setGauge(a.metrics, "BuckHashSys", rtm.BuckHashSys)
-	setGauge(a.metrics, "Frees", rtm.Frees)
-	setGauge(a.metrics, "GCCPUFraction", rtm.GCCPUFraction)
-	setGauge(a.metrics, "GCSys", rtm.GCSys)
-	setGauge(a.metrics, "HeapAlloc", rtm.HeapAlloc)
-	setGauge(a.metrics, "HeapIdle", rtm.HeapIdle)
-	setGauge(a.metrics, "HeapInuse", rtm.HeapInuse)
-	setGauge(a.metrics, "HeapObjects", rtm.HeapObjects)
-	setGauge(a.metrics, "HeapReleased", rtm.HeapReleased)
-	setGauge(a.metrics, "LastGC", rtm.LastGC)
-	setGauge(a.metrics, "Lookups", rtm.Lookups)
-	setGauge(a.metrics, "MCacheInuse", rtm.MCacheInuse)
-	setGauge(a.metrics, "MCacheSys", rtm.MCacheSys)
-	setGauge(a.metrics, "MSpanInuse", rtm.MSpanInuse)
-	setGauge(a.metrics, "MSpanSys", rtm.MSpanSys)
-	setGauge(a.metrics, "Mallocs", rtm.Mallocs)
-	setGauge(a.metrics, "NextGC", rtm.NextGC)
-	setGauge(a.metrics, "NumForcedGC", rtm.NumForcedGC)
-	setGauge(a.metrics, "NumGC", rtm.NumGC)
-	setGauge(a.metrics, "OtherSys", rtm.OtherSys)
-	setGauge(a.metrics, "PauseTotalNs", rtm.PauseTotalNs)
-	setGauge(a.metrics, "StackInuse", rtm.StackInuse)
-	setGauge(a.metrics, "StackSys", rtm.StackSys)
-	setGauge(a.metrics, "Sys", rtm.Sys)
-	setGauge(a.metrics, "TotalAlloc", rtm.TotalAlloc)
-	setGauge(a.metrics, "RandomValue", rand.Float64())
-	a.setCounter()
-	logger.Log.Info("Success collect metrics")
+	}
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+	return resultCh
 }
