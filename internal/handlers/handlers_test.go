@@ -17,7 +17,6 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +57,8 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, data []
 }
 
 func TestMetricSetGaugeHandler(t *testing.T) {
-	fs := file.NewFileStorage("tt.txt", 40, false, 0)
+	mem := memory.NewMemStorage(40)
+	fs := file.NewFileStorage("tt.txt", mem, false, 0)
 	router := ServerRouter(fs, "")
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -256,9 +256,9 @@ func TestMetricGetAllValueHandler1(t *testing.T) {
 }
 
 func TestMetricUpdateHandler(t *testing.T) {
-	countMetrics := 40
+	mem := memory.NewMemStorage(40)
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, countMetrics, true, 0)
+	fs := file.NewFileStorage(fsPath, mem, true, 0)
 
 	router := ServerRouter(fs, "")
 	ts := httptest.NewServer(router)
@@ -322,9 +322,9 @@ func TestMetricUpdateHandler(t *testing.T) {
 }
 
 func TestMetricValueHandler(t *testing.T) {
-	countMetrics := 40
+	mem := memory.NewMemStorage(40)
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, countMetrics, true, 0)
+	fs := file.NewFileStorage(fsPath, mem, true, 0)
 	ctx := context.Background()
 	fs.SetGauge(ctx, "Alloc", 3.1234)
 	fs.SetCounter(ctx, "PollCount", 12345)
@@ -389,9 +389,9 @@ func TestMetricValueHandler(t *testing.T) {
 }
 
 func TestMetricGetAllValueHandler(t *testing.T) {
-	countMetrics := 40
+	mem := memory.NewMemStorage(40)
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, countMetrics, true, 0)
+	fs := file.NewFileStorage(fsPath, mem, true, 0)
 	ctx := context.Background()
 	fs.SetGauge(ctx, "Alloc", 3.1234)
 	fs.SetCounter(ctx, "PollCount", 12345)
@@ -419,5 +419,63 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 		for _, v := range strings.Split(test.want, ", ") {
 			assert.Contains(t, get, v)
 		}
+	}
+}
+
+func TestMetricBatchUpdateHandler(t *testing.T) {
+	mem := memory.NewMemStorage(40)
+	router := ServerRouter(mem, "")
+	ts := httptest.NewServer(router)
+	defer func() {
+		ts.Close()
+	}()
+	gaugeWants := []metric.Gauge{123.56, 0.0}
+	counterWants := []metric.Counter{0, 112, 1}
+	tests := []struct {
+		name       string
+		input      []models.Metrics
+		want       []metric.Gauge
+		wantStatus int
+	}{{
+		name: "many gauge metrics",
+		input: []models.Metrics{
+			{
+				ID:    "metric1",
+				MType: "gauge",
+				Value: gaugeWants[0].GetRawValue(),
+			}, {
+				ID:    "metric2",
+				MType: "gauge",
+				Value: gaugeWants[1].GetRawValue(),
+			},
+		},
+		want:       nil,
+		wantStatus: 200,
+	}, {
+		name: "mnny counter metirc",
+		input: []models.Metrics{
+			{
+				ID:    "counter_metric1",
+				MType: "counter",
+				Delta: counterWants[0].GetRawValue(),
+			}, {
+				ID:    "counter_metric2",
+				MType: "counter",
+				Delta: counterWants[1].GetRawValue(),
+			}, {
+				ID:    "counter_metric3",
+				MType: "counter",
+				Delta: counterWants[2].GetRawValue(),
+			},
+		},
+		want:       nil,
+		wantStatus: 200,
+	},
+	}
+	for _, test := range tests {
+		reqData, _ := json.Marshal(test.input)
+		resp, _ := testRequest(t, ts, http.MethodPost, "/updates/", reqData)
+		defer resp.Body.Close()
+		assert.Equal(t, test.wantStatus, resp.StatusCode)
 	}
 }

@@ -8,9 +8,21 @@ import (
 	"os"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
+
+type MemoryStore interface {
+	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
+	GetGauges(ctx context.Context) map[string]metric.Gauge
+	SetGauge(ctx context.Context, name string, val float64) error
+	SetGauges(ctx context.Context, gauges map[string]float64)
+	GetCounter(ctx context.Context, name string) (metric.Counter, error)
+	GetCounters(ctx context.Context) map[string]metric.Counter
+	SetCounter(ctx context.Context, name string, value int64) error
+	SetCounters(ctx context.Context, gauges map[string]int64)
+
+	ToList(ctx context.Context) ([]string, error)
+}
 
 type DumpItem struct {
 	Gauges   map[string]float64 `json:"gauges"`
@@ -20,10 +32,10 @@ type DumpItem struct {
 type FileStorage struct {
 	path        string
 	immediately bool
-	memStorage  *memory.MemStorage
+	memStorage  MemoryStore
 }
 
-func NewFileStorage(pathToFile string, metricsCount int, restore bool, storeInterval int) *FileStorage {
+func NewFileStorage(pathToFile string, memStorage MemoryStore, restore bool, storeInterval int) *FileStorage {
 
 	immediatelySave := false
 	if storeInterval == 0 {
@@ -32,7 +44,7 @@ func NewFileStorage(pathToFile string, metricsCount int, restore bool, storeInte
 	s := &FileStorage{
 		path:        pathToFile,
 		immediately: immediatelySave,
-		memStorage:  memory.NewMemStorage(metricsCount),
+		memStorage:  memStorage,
 	}
 
 	if restore {
@@ -117,18 +129,29 @@ func (fs *FileStorage) SaveNow() {
 	}
 }
 
+func (fs *FileStorage) ExtractGauges(ctx context.Context) map[string]float64 {
+	gauges := fs.memStorage.GetGauges(ctx)
+	var g = make(map[string]float64, len(gauges))
+	for k, v := range gauges {
+		g[k] = *v.GetRawValue()
+	}
+	return g
+}
+
+func (fs *FileStorage) ExtractCounters(ctx context.Context) map[string]int64 {
+	counters := fs.memStorage.GetCounters(ctx)
+	var c = make(map[string]int64, len(counters))
+	for k, v := range counters {
+		c[k] = *v.GetRawValue()
+	}
+	return c
+}
+
 func (fs *FileStorage) Save() error {
 	logger.Log.Info("Начало сохранения метрик в файл ...")
 	ctx := context.Background()
-	var g = make(map[string]float64, len(fs.memStorage.GetGauges(ctx)))
-	var c = make(map[string]int64, len(fs.memStorage.GetCounters(ctx)))
-	for k, v := range fs.memStorage.GetGauges(ctx) {
-		g[k] = *v.GetRawValue()
-	}
-	for k, v := range fs.memStorage.GetCounters(ctx) {
-		c[k] = *v.GetRawValue()
-	}
-
+	g := fs.ExtractGauges(ctx)
+	c := fs.ExtractCounters(ctx)
 	err := fs.Dump(g, c)
 
 	if err != nil {
@@ -144,12 +167,8 @@ func (fs *FileStorage) Restore(ctx context.Context) error {
 		return err
 	}
 
-	for k, v := range g {
-		fs.memStorage.SetGauge(ctx, k, v)
-	}
-	for k, v := range c {
-		fs.memStorage.SetCounter(ctx, k, v)
-	}
+	fs.memStorage.SetGauges(ctx, g)
+	fs.memStorage.SetCounters(ctx, c)
 
 	return nil
 }

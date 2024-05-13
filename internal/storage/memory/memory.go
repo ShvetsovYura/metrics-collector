@@ -34,6 +34,18 @@ func (m *MemStorage) SetGauge(ctx context.Context, name string, val float64) err
 	return nil
 }
 
+func (m *MemStorage) SetGauges(ctx context.Context, gauges map[string]float64) {
+	for k, v := range gauges {
+		m.SetGauge(ctx, k, v)
+	}
+}
+
+func (m *MemStorage) SetCounters(ctx context.Context, counters map[string]int64) {
+	for k, v := range counters {
+		m.SetCounter(ctx, k, v)
+	}
+}
+
 func (m *MemStorage) SetCounter(ctx context.Context, name string, val int64) error {
 	m.mx.Lock()
 	m.counterMetric[name] += metric.Counter(val)
