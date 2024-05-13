@@ -31,22 +31,22 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 	dbCtx := context.Background()
 
 	if opt.DBDSN == "" {
+		m := memory.NewMemStorage(metricsCount)
 		if opt.FileStoragePath == "" {
-			ts := memory.NewMemStorage(metricsCount)
-			saverStorage = ts
-			targetStorage = ts
+			saverStorage = m
+			targetStorage = m
 		} else {
-			ts := file.NewFileStorage(opt.FileStoragePath, metricsCount, opt.Restore, opt.StoreInterval)
-			saverStorage = ts
-			targetStorage = ts
+			f := file.NewFileStorage(opt.FileStoragePath, m, opt.Restore, opt.StoreInterval)
+			saverStorage = f
+			targetStorage = f
 		}
 	} else {
-		ts, err := db.NewDBPool(dbCtx, opt.DBDSN)
+		d, err := db.NewDBPool(dbCtx, opt.DBDSN)
 		if err != nil {
 			logger.Log.Fatal("Не удалось подключиться к БД!")
 		}
-		targetStorage = ts
-		saverStorage = ts
+		targetStorage = d
+		saverStorage = d
 	}
 	return &Server{
 		// из-за того, что удалил методы Save и Restore из интерфейса Storage
