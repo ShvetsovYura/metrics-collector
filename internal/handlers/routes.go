@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"net/http/pprof"
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
@@ -57,5 +58,14 @@ func ServerRouter(s Storage, key string) chi.Router {
 	r.Post("/value/", MetricGetValueHandlerWithBody(s))
 	r.Get("/ping", DBPingHandler(s))
 
+	r.Route("/debug/pprof", func(r chi.Router) {
+		r.Get("/", pprof.Index)
+		r.Get("/cmdline", pprof.Handler("cmdline").ServeHTTP)
+		r.Get("/profile", pprof.Handler("profile").ServeHTTP)
+		r.Get("/symbol", pprof.Handler("symbol").ServeHTTP)
+		r.Get("/goroutine", pprof.Handler("goroutine").ServeHTTP)
+		r.Get("/heap", pprof.Handler("heap").ServeHTTP)
+		r.Get("/trace", pprof.Trace)
+	})
 	return r
 }
