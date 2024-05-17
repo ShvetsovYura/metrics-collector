@@ -54,7 +54,10 @@ func (m *MemStorage) SetCounter(ctx context.Context, name string, val int64) err
 }
 
 func (m *MemStorage) GetGauge(ctx context.Context, name string) (metric.Gauge, error) {
-	if val, ok := m.gaugeMetrics[name]; ok {
+	m.mx.Lock()
+	val, ok := m.gaugeMetrics[name]
+	m.mx.Unlock()
+	if ok {
 		return val, nil
 	} else {
 		return 0, fmt.Errorf("NotFound %s", name)
