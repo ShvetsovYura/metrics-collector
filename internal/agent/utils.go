@@ -11,8 +11,16 @@ import (
 
 func sendMetric(data []byte, link string, contentType string, key string) error {
 	var buf bytes.Buffer
-	var writer io.Writer
+
+	req, err := http.NewRequest("POST", link, &buf)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", contentType)
+
 	if util.Contains([]string{"application/json", "text/html"}, contentType) {
+		req.Header.Add("Content-Encoding", "gzip")
+		req.Header.Add("Accept-Encoding", "gzip")
 		gzw := gzip.NewWriter(&buf)
 
 		_, err := gzw.Write(data)
@@ -21,20 +29,14 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 		}
 
 		gzw.Close()
-
 	} else {
-		writer = io.Writer(&buf)
-		writer.Write(data)
+		writer := io.Writer(&buf)
+		_, err := writer.Write(data)
+		if err != nil {
+			return err
+		}
 	}
 
-	req, err := http.NewRequest("POST", link, &buf)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Encoding", "gzip")
-	req.Header.Add("Content-Type", contentType)
-	req.Header.Add("Accept-Encoding", "gzip")
 	if key != "" {
 		hash := util.Hash(buf.Bytes(), key)
 		req.Header.Add("HashSHA256", hash)

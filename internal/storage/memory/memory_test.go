@@ -2,8 +2,10 @@ package memory
 
 import (
 	"context"
+	"math/rand"
 	"reflect"
 	"sort"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -201,4 +203,36 @@ func TestMemStorage_GetGauge(t *testing.T) {
 
 		})
 	}
+}
+
+func BenchmarkMemoryStorage(b *testing.B) {
+	items := 100000
+	b.Run("memory storage without init metrics counts", func(b *testing.B) {
+		ms := NewMemStorage(0)
+		gauges := make(map[string]float64, items)
+		max := 100000.0
+		min := 1.0
+		for i := 0; i < items; i++ {
+			gauges[strconv.Itoa(i)] = min + rand.Float64()*(max-min)
+		}
+		ctx := context.Background()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ms.SetGauges(ctx, gauges)
+		}
+	})
+	b.Run("memory storage with init metrics counts", func(b *testing.B) {
+		ms := NewMemStorage(100000)
+		gauges := make(map[string]float64, items)
+		max := 100000.0
+		min := 1.0
+		for i := 0; i < items; i++ {
+			gauges[strconv.Itoa(i)] = min + rand.Float64()*(max-min)
+		}
+		ctx := context.Background()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ms.SetGauges(ctx, gauges)
+		}
+	})
 }
