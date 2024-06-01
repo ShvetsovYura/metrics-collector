@@ -10,7 +10,6 @@ import (
 
 func TestAgent_collectMetricsGenerator(t *testing.T) {
 	type fields struct {
-		mx      sync.RWMutex
 		metrics map[string]MetricItem
 		options *AgentOptions
 	}
@@ -26,7 +25,7 @@ func TestAgent_collectMetricsGenerator(t *testing.T) {
 		{
 			name: "success get metrics",
 			fields: fields{
-				mx:      sync.RWMutex{},
+
 				metrics: make(map[string]MetricItem),
 			},
 			args: args{
@@ -39,7 +38,7 @@ func TestAgent_collectMetricsGenerator(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			a := &Agent{
-				mx:      tt.fields.mx,
+				mx:      sync.RWMutex{},
 				metrics: tt.fields.metrics,
 				options: tt.fields.options,
 			}
@@ -56,7 +55,6 @@ func TestAgent_collectMetricsGenerator(t *testing.T) {
 
 func TestAgent_processMetrics(t *testing.T) {
 	type fields struct {
-		mx      sync.RWMutex
 		metrics map[string]MetricItem
 		options *AgentOptions
 	}
@@ -73,7 +71,7 @@ func TestAgent_processMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &Agent{
-				mx:      tt.fields.mx,
+				mx:      sync.RWMutex{},
 				metrics: tt.fields.metrics,
 				options: tt.fields.options,
 			}
