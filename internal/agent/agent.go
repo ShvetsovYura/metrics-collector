@@ -14,6 +14,7 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
+// Metric: структура метрики для коммуникации (отправки) с другими сервисами
 type Metric struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
@@ -21,6 +22,7 @@ type Metric struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
+// MetricItem: универсальная структура для данных для хранения единицы метрики
 type MetricItem struct {
 	ID    string
 	MType string
@@ -28,12 +30,14 @@ type MetricItem struct {
 	Value float64
 }
 
+// Agent: структура, содержащая собраные метрики
 type Agent struct {
 	mx      sync.RWMutex
 	metrics map[string]MetricItem
 	options *AgentOptions
 }
 
+// NewAgent: инициализация нового экземляра агента сбора метрик
 func NewAgent(metricsCount int, options *AgentOptions) *Agent {
 	return &Agent{
 		metrics: make(map[string]MetricItem, metricsCount),
@@ -41,6 +45,7 @@ func NewAgent(metricsCount int, options *AgentOptions) *Agent {
 	}
 }
 
+// Run: запуск агента сбора метрик
 func (a *Agent) Run(ctx context.Context) {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)

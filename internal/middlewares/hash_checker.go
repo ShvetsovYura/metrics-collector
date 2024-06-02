@@ -10,6 +10,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
+// CheckRequestHashHeader, мидлваря для проверки хэша сообщения на основании заголовка HashSHA256.
 func CheckRequestHashHeader(key string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +52,7 @@ func (hw *hashWriter) Close() error {
 	return errors.New("middlewares: io.WriteCloser is unavailable on the writer")
 }
 
+// ResposeHeaderWithHash, мидлваря, которая добавляет хэш от контента в заголовок HashSHA256
 func ResposeHeaderWithHash(key string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

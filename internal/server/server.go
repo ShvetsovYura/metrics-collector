@@ -17,6 +17,7 @@ type StorageCloser interface {
 	Save() error
 }
 
+// Server, хранит информации о сервере сбора метрик.
 type Server struct {
 	// можно было бы вообще без этого интерфейса
 	// но тогда не понятно - как сохранять метрики в файл в `Run`
@@ -25,6 +26,7 @@ type Server struct {
 	options   *ServerOptions
 }
 
+// NewServer, создает новый сервер работы с метриками.
 func NewServer(metricsCount int, opt *ServerOptions) *Server {
 	var targetStorage handlers.Storage
 	var saverStorage StorageCloser
@@ -60,6 +62,7 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 	}
 }
 
+// Run, запускает сервер.
 func (s *Server) Run(ctx context.Context) error {
 
 	logger.Log.Info("START HTTP SERVER")

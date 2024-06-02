@@ -14,12 +14,15 @@ import (
 	"github.com/go-chi/httplog/v2"
 )
 
+// StorageReader, интерфейс, определяющий поддержку чтение данных из стораджа.
 type StorageReader interface {
 	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
 	GetCounter(ctx context.Context, name string) (metric.Counter, error)
 	Ping(ctx context.Context) error
 	ToList(ctx context.Context) ([]string, error)
 }
+
+// StorageWriter, интерфейс, определяющий поддержку запись данных из сторадж.
 type StorageWriter interface {
 	SetGauge(ctx context.Context, name string, val float64) error
 	SetCounter(ctx context.Context, name string, val int64) error
@@ -27,11 +30,13 @@ type StorageWriter interface {
 	SaveCountersBatch(context.Context, map[string]metric.Counter) error
 }
 
+// Storage, интерфейс работы со стораджем.
 type Storage interface {
 	StorageReader
 	StorageWriter
 }
 
+// ServerRouter, функция объявления роутинга http-запросов и их обработчиков.
 func ServerRouter(s Storage, key string) chi.Router {
 
 	logger.NewHTTPLogger()

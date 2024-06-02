@@ -1,8 +1,9 @@
 package models
 
+// Модель коммуникации метрик.
 type Metrics struct {
-	ID    string   `json:"id" bson:"id"`                           // имя метрики
-	MType string   `json:"type" bson:"type"`                       // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty" bson:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty" bson:"value,omitempty"` // значение метрики в случае передачи gauge
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }

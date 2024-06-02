@@ -35,6 +35,7 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
+// WithUnzipRequest, мидлваря для распаковки принятых сжатых данных.
 func WithUnzipRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// распаковка входящих сжатых данных
