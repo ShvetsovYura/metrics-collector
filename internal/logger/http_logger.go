@@ -2,6 +2,7 @@ package logger
 
 import (
 	"log/slog"
+	"time"
 
 	"github.com/go-chi/httplog/v2"
 )
@@ -13,9 +14,10 @@ var HTTPLogger *httplog.Logger
 func NewHTTPLogger() {
 	HTTPLogger = httplog.NewLogger("metrics-http-logger", httplog.Options{
 		JSON:             true,
-		LogLevel:         slog.LevelInfo,
+		LogLevel:         slog.LevelError,
 		Concise:          false,
 		RequestHeaders:   false,
 		MessageFieldName: "message",
+		QuietDownPeriod:  10 * time.Second,
 	})
 }

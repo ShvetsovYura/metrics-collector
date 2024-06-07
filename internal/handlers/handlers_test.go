@@ -206,7 +206,7 @@ func TestMetricGetValueHandler(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	var testCases = []struct {
+	var tests = []struct {
 		url    string
 		want   string
 		status int
@@ -218,7 +218,7 @@ func TestMetricGetValueHandler(t *testing.T) {
 		{"/value/gauge/abra", "", http.StatusNotFound},
 	}
 
-	for _, test := range testCases {
+	for _, test := range tests {
 		resp, get := testRequest(t, ts, http.MethodGet, test.url, nil)
 		defer resp.Body.Close()
 		assert.Equal(t, test.status, resp.StatusCode)

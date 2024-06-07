@@ -2,8 +2,8 @@ package memory
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
@@ -83,17 +83,33 @@ func (m *MemStorage) GetCounters(ctx context.Context) map[string]metric.Counter 
 func (m *MemStorage) ToList(ctx context.Context) ([]string, error) {
 	var list []string
 
-	for _, c := range m.gaugeMetrics {
-		list = append(list, c.ToString())
+	gaugeKeys := make([]string, 0, len(m.gaugeMetrics))
+	counterKeys := make([]string, 0, len(m.counterMetric))
+	for key := range m.gaugeMetrics {
+		gaugeKeys = append(gaugeKeys, key)
 	}
-	for _, c := range m.counterMetric {
-		list = append(list, c.ToString())
+	for key := range m.counterMetric {
+		counterKeys = append(counterKeys, key)
+	}
+	sort.Strings(gaugeKeys)
+	sort.Strings(counterKeys)
+
+	for _, k := range gaugeKeys {
+		if v, ok := m.gaugeMetrics[k]; ok {
+			list = append(list, v.ToString())
+		}
+	}
+	for _, k := range counterKeys {
+		if v, ok := m.counterMetric[k]; ok {
+			list = append(list, v.ToString())
+		}
 	}
 	return list, nil
 }
 
 func (m *MemStorage) Ping(ctx context.Context) error {
-	return errors.New("it's not db. memorystorage")
+	return nil
+	// return errors.New("it's not db. memorystorage")
 }
 
 func (m *MemStorage) SaveGaugesBatch(ctx context.Context, gauges map[string]metric.Gauge) error {
