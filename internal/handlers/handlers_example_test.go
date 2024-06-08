@@ -201,7 +201,7 @@ func ExampleMetricUpdateHandler() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-
+	defer resp.Body.Close()
 	fmt.Println(resp.Status)
 	// Output:
 	// 200 OK
