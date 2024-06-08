@@ -8,9 +8,10 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 
-	"github.com/ShvetsovYura/metrics-collector/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ShvetsovYura/metrics-collector/mocks"
 )
 
 func TestDump(t *testing.T) {

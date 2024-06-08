@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
 // Metric: структура метрики для коммуникации (отправки) с другими сервисами

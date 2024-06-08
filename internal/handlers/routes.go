@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net/http/pprof"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httplog/v2"
+
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/middlewares"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/httplog/v2"
 )
 
 // StorageReader, интерфейс, определяющий поддержку чтение данных из стораджа.

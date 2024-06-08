@@ -12,13 +12,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type wantGauge struct {

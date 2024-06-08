@@ -8,8 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	metric "github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	gomock "github.com/golang/mock/gomock"
+
+	metric "github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
 
 // MockMemoryStore is a mock of MemoryStore interface.

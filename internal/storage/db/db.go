@@ -4,10 +4,11 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
 
 type DBStore struct {

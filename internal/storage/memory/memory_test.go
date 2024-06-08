@@ -9,8 +9,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
 
 func TestMemStorage_ToList(t *testing.T) {

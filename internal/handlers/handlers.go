@@ -9,14 +9,16 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
-	"github.com/go-chi/chi/v5"
 )
-// MetricUpdateHandler, обновляет 
+
+// MetricUpdateHandler, обновляет
 func MetricUpdateHandler(m StorageWriter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, internal.MetricTypePathParam)
