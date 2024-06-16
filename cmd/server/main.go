@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os/signal"
 	"syscall"
 
@@ -12,9 +13,12 @@ import (
 )
 
 func main() {
-	logger.InitLogger("info")
+	err := logger.InitLogger("info")
+	if err != nil {
+		fmt.Println("Не удалось инициализировать лог")
+	}
 
-	opts := new(server.ServerOptions)
+	opts := new(server.Options)
 	opts.ParseArgs()
 
 	if err := opts.ParseEnvs(); err != nil {

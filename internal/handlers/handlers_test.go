@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -49,7 +51,12 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, data []
 
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+		}
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -121,7 +128,12 @@ func TestMetricSetGaugeHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, _ := testRequest(t, ts, test.method, test.path, []byte{})
-			defer resp.Body.Close()
+			defer func() {
+				err := resp.Body.Close()
+				if err != nil {
+					fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+				}
+			}()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			if !test.want.isErr {
 				v, err := fs.GetGauge(context.Background(), test.want.mn)
@@ -184,7 +196,12 @@ func TestMetricSetCounterHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, _ := testRequest(t, ts, test.method, test.path, nil)
-			defer resp.Body.Close()
+			defer func() {
+				err := resp.Body.Close()
+				if err != nil {
+					fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+				}
+			}()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			if !test.want.isErr {
 				v, err := m.GetCounter(context.Background(), test.want.mn)
@@ -199,9 +216,18 @@ func TestMetricSetCounterHandler(t *testing.T) {
 func TestMetricGetValueHandler(t *testing.T) {
 	ctx := context.Background()
 	m := memory.NewMemStorage(40)
-	m.SetGauge(ctx, "Alloc", 3.1234)
-	m.SetCounter(ctx, "PollCount", 12345)
-	m.SetGauge(ctx, "OtherMetric", -123.30)
+	err := m.SetGauge(ctx, "Alloc", 3.1234)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
+	err = m.SetCounter(ctx, "PollCount", 12345)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
+	err = m.SetGauge(ctx, "OtherMetric", -123.30)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
 
 	router := ServerRouter(m, "")
 	ts := httptest.NewServer(router)
@@ -221,7 +247,12 @@ func TestMetricGetValueHandler(t *testing.T) {
 
 	for _, test := range tests {
 		resp, get := testRequest(t, ts, http.MethodGet, test.url, nil)
-		defer resp.Body.Close()
+		defer func() {
+			err := resp.Body.Close()
+			if err != nil {
+				fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+			}
+		}()
 		assert.Equal(t, test.status, resp.StatusCode)
 		assert.Equal(t, test.want, get)
 	}
@@ -230,9 +261,18 @@ func TestMetricGetValueHandler(t *testing.T) {
 func TestMetricGetAllValueHandler1(t *testing.T) {
 	m := memory.NewMemStorage(40)
 	ctx := context.Background()
-	m.SetGauge(ctx, "Alloc", 3.1234)
-	m.SetCounter(ctx, "PollCount", 12345)
-	m.SetGauge(ctx, "OtherMetric", -123.30)
+	err := m.SetGauge(ctx, "Alloc", 3.1234)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
+	err = m.SetCounter(ctx, "PollCount", 12345)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
+	err = m.SetGauge(ctx, "OtherMetric", -123.30)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
 
 	router := ServerRouter(m, "")
 	ts := httptest.NewServer(router)
@@ -248,7 +288,12 @@ func TestMetricGetAllValueHandler1(t *testing.T) {
 
 	for _, test := range testCases {
 		resp, get := testRequest(t, ts, http.MethodGet, test.url, nil)
-		defer resp.Body.Close()
+		defer func() {
+			err := resp.Body.Close()
+			if err != nil {
+				fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+			}
+		}()
 		assert.Equal(t, test.status, resp.StatusCode)
 		for _, v := range strings.Split(test.want, ", ") {
 			assert.Contains(t, get, v)
@@ -265,7 +310,10 @@ func TestMetricUpdateHandler(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
-		os.Remove(fsPath)
+		err := os.Remove(fsPath)
+		if err != nil {
+			fmt.Printf("ошибка удаления файла, %s", err.Error())
+		}
 	}()
 	wantValues := []float64{3.400}
 	wantDeltas := []int64{3}
@@ -310,11 +358,19 @@ func TestMetricUpdateHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, "POST", "/update/", []byte(test.reqData))
-			defer resp.Body.Close()
+			defer func() {
+				err := resp.Body.Close()
+				if err != nil {
+					t.Fatalf("не удалось закрыть тело ответа, %s", err.Error())
+				}
+			}()
 			assert.Equal(t, test.wantStatus, resp.StatusCode)
 			if test.wantStatus == http.StatusOK {
 				respJSON := &models.Metrics{}
-				json.Unmarshal([]byte(body), respJSON)
+				err := json.Unmarshal([]byte(body), respJSON)
+				if err != nil {
+					t.Fatalf("ошибка преобразования в объект, %s", err.Error())
+				}
 				assert.Equal(t, test.want, *respJSON)
 			}
 		})
@@ -327,15 +383,28 @@ func TestMetricValueHandler(t *testing.T) {
 	fsPath := "/tmp/myFileStorage.txt"
 	fs := file.NewFileStorage(fsPath, mem, true, 0)
 	ctx := context.Background()
-	fs.SetGauge(ctx, "Alloc", 3.1234)
-	fs.SetCounter(ctx, "PollCount", 12345)
-	fs.SetGauge(ctx, "OtherMetric", -123.30)
+	err := fs.SetGauge(ctx, "Alloc", 3.1234)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
+
+	err = fs.SetCounter(ctx, "PollCount", 12345)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
+	err = fs.SetGauge(ctx, "OtherMetric", -123.30)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
 
 	router := ServerRouter(fs, "")
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
-		os.Remove(fsPath)
+		err := os.Remove(fsPath)
+		if err != nil {
+			log.Fatalf("ошибка удаления файла, %s", err.Error())
+		}
 	}()
 
 	wantValues := []float64{3.1234, -123.3}
@@ -376,12 +445,17 @@ func TestMetricValueHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			b := []byte(test.reqData)
 			resp, body := testRequest(t, ts, http.MethodPost, "/value/", b)
-			defer resp.Body.Close()
+			defer func() {
+				err := resp.Body.Close()
+				if err != nil {
+					fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+				}
+			}()
 			assert.Equal(t, test.status, resp.StatusCode)
 			if test.status == http.StatusOK {
 
 				respJSON := &models.Metrics{}
-				json.Unmarshal([]byte(body), respJSON)
+				_ = json.Unmarshal([]byte(body), respJSON)
 				assert.Equal(t, test.want, *respJSON)
 			}
 		})
@@ -394,15 +468,26 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 	fsPath := "/tmp/myFileStorage.txt"
 	fs := file.NewFileStorage(fsPath, mem, true, 0)
 	ctx := context.Background()
-	fs.SetGauge(ctx, "Alloc", 3.1234)
-	fs.SetCounter(ctx, "PollCount", 12345)
-	fs.SetGauge(ctx, "OtherMetric", -123.30)
-
+	err := fs.SetGauge(ctx, "Alloc", 3.1234)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
+	err = fs.SetCounter(ctx, "PollCount", 12345)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
+	err = fs.SetGauge(ctx, "OtherMetric", -123.30)
+	if err != nil {
+		t.Fatalf("не удалось установить метрику, %s", err.Error())
+	}
 	router := ServerRouter(fs, "")
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
-		os.Remove(fsPath)
+		err := os.Remove(fsPath)
+		if err != nil {
+			log.Fatalf("ошибка удаления файла, %s", err.Error())
+		}
 	}()
 
 	var testCases = []struct {
@@ -415,7 +500,12 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		resp, get := testRequest(t, ts, http.MethodGet, test.url, nil)
-		defer resp.Body.Close()
+		defer func() {
+			err := resp.Body.Close()
+			if err != nil {
+				fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+			}
+		}()
 		assert.Equal(t, test.status, resp.StatusCode)
 		for _, v := range strings.Split(test.want, ", ") {
 			assert.Contains(t, get, v)
@@ -476,7 +566,12 @@ func TestMetricBatchUpdateHandler(t *testing.T) {
 	for _, test := range tests {
 		reqData, _ := json.Marshal(test.input)
 		resp, _ := testRequest(t, ts, http.MethodPost, "/updates/", reqData)
-		defer resp.Body.Close()
+		defer func() {
+			err := resp.Body.Close()
+			if err != nil {
+				fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+			}
+		}()
 		assert.Equal(t, test.wantStatus, resp.StatusCode)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
 
@@ -27,44 +28,52 @@ func NewMemStorage(metricsCount int) *MemStorage {
 	return &m
 }
 
-func (m *MemStorage) SetGauge(ctx context.Context, name string, val float64) error {
+func (m *MemStorage) SetGauge(_ context.Context, name string, val float64) error {
 	m.mx.Lock()
+	defer m.mx.Unlock()
 	m.gaugeMetrics[name] = metric.Gauge(val)
-	m.mx.Unlock()
 	return nil
 }
 
-func (m *MemStorage) SetGauges(ctx context.Context, gauges map[string]float64) {
+func (m *MemStorage) SetGauges(_ context.Context, gauges map[string]float64) {
 	for k, v := range gauges {
-		m.SetGauge(ctx, k, v)
+		err := m.SetGauge(context.TODO(), k, v)
+		if err != nil {
+			logger.Log.Errorf("ошибка при записи gauge: %s:%d", k, v)
+		}
 	}
 }
 
-func (m *MemStorage) SetCounters(ctx context.Context, counters map[string]int64) {
+func (m *MemStorage) SetCounters(_ context.Context, counters map[string]int64) {
 	for k, v := range counters {
-		m.SetCounter(ctx, k, v)
+		err := m.SetCounter(context.TODO(), k, v)
+		if err != nil {
+			logger.Log.Errorf("ошибка при записи counter: %s:%d", k, v)
+		}
 	}
 }
 
-func (m *MemStorage) SetCounter(ctx context.Context, name string, val int64) error {
+func (m *MemStorage) SetCounter(_ context.Context, name string, val int64) error {
 	m.mx.Lock()
+	defer m.mx.Unlock()
 	m.counterMetric[name] += metric.Counter(val)
-	m.mx.Unlock()
 	return nil
 }
 
-func (m *MemStorage) GetGauge(ctx context.Context, name string) (metric.Gauge, error) {
+func (m *MemStorage) GetGauge(_ context.Context, name string) (metric.Gauge, error) {
 	m.mx.Lock()
-	val, ok := m.gaugeMetrics[name]
-	m.mx.Unlock()
-	if ok {
+	defer m.mx.Unlock()
+
+	if val, ok := m.gaugeMetrics[name]; ok {
 		return val, nil
 	} else {
 		return 0, fmt.Errorf("NotFound %s", name)
 	}
 }
 
-func (m *MemStorage) GetCounter(ctx context.Context, name string) (metric.Counter, error) {
+func (m *MemStorage) GetCounter(_ context.Context, name string) (metric.Counter, error) {
+	m.mx.Lock()
+	defer m.mx.Unlock()
 	if val, ok := m.counterMetric[name]; ok {
 		return val, nil
 	} else {
@@ -72,15 +81,15 @@ func (m *MemStorage) GetCounter(ctx context.Context, name string) (metric.Counte
 	}
 }
 
-func (m *MemStorage) GetGauges(ctx context.Context) map[string]metric.Gauge {
+func (m *MemStorage) GetGauges(_ context.Context) map[string]metric.Gauge {
 	return m.gaugeMetrics
 }
 
-func (m *MemStorage) GetCounters(ctx context.Context) map[string]metric.Counter {
+func (m *MemStorage) GetCounters(_ context.Context) map[string]metric.Counter {
 	return m.counterMetric
 }
 
-func (m *MemStorage) ToList(ctx context.Context) ([]string, error) {
+func (m *MemStorage) ToList(_ context.Context) ([]string, error) {
 	var list []string
 
 	gaugeKeys := make([]string, 0, len(m.gaugeMetrics))
@@ -107,20 +116,19 @@ func (m *MemStorage) ToList(ctx context.Context) ([]string, error) {
 	return list, nil
 }
 
-func (m *MemStorage) Ping(ctx context.Context) error {
+func (m *MemStorage) Ping(_ context.Context) error {
 	return nil
-	// return errors.New("it's not db. memorystorage")
 }
 
-func (m *MemStorage) SaveGaugesBatch(ctx context.Context, gauges map[string]metric.Gauge) error {
+func (m *MemStorage) SaveGaugesBatch(_ context.Context, gauges map[string]metric.Gauge) error {
 	return nil
 }
-func (m *MemStorage) SaveCountersBatch(ctx context.Context, couters map[string]metric.Counter) error {
+func (m *MemStorage) SaveCountersBatch(_ context.Context, couters map[string]metric.Counter) error {
 	return nil
 }
 func (m *MemStorage) Save() error {
 	return nil
 }
-func (m *MemStorage) Restore(ctx context.Context) error {
+func (m *MemStorage) Restore(_ context.Context) error {
 	return nil
 }

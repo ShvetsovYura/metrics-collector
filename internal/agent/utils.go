@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -25,10 +26,13 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 
 		_, err := gzw.Write(data)
 		if err != nil {
-			return err
+			return fmt.Errorf("ошибка при записи gzip тела при отправке, %w", err)
 		}
 
-		gzw.Close()
+		err = gzw.Close()
+		if err != nil {
+			return fmt.Errorf("ошибка при закрытии gzip писателя, %w", err)
+		}
 	} else {
 		writer := io.Writer(&buf)
 		_, err := writer.Write(data)
@@ -46,6 +50,11 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			fmt.Printf("error on close response body, %s", err.Error())
+		}
+	}()
 	return nil
 }

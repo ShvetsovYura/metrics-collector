@@ -65,7 +65,12 @@ func ResposeHeaderWithHash(key string) func(http.Handler) http.Handler {
 				}
 
 				wr = hw
-				defer hw.Close()
+				defer func() {
+					err := hw.Close()
+					if err != nil {
+						logger.Log.Error("Ошибка закрытия HashWriter, %s", err.Error())
+					}
+				}()
 
 			}
 			next.ServeHTTP(wr, r)

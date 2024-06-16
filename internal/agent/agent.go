@@ -35,11 +35,11 @@ type MetricItem struct {
 type Agent struct {
 	mx      sync.RWMutex
 	metrics map[string]MetricItem
-	options *AgentOptions
+	options *Options
 }
 
 // NewAgent: инициализация нового экземляра агента сбора метрик
-func NewAgent(metricsCount int, options *AgentOptions) *Agent {
+func NewAgent(metricsCount int, options *Options) *Agent {
 	return &Agent{
 		metrics: make(map[string]MetricItem, metricsCount),
 		options: options,
@@ -132,7 +132,10 @@ func (a *Agent) senderWorker(items <-chan MetricItem) {
 			})
 		}
 
-		sendMetric(data, link, DefaultContentType, a.options.Key)
+		err := sendMetric(data, link, DefaultContentType, a.options.Key)
+		if err != nil {
+			logger.Log.Errorf("Не удалось отправить метрику: %v", data)
+		}
 	}
 }
 

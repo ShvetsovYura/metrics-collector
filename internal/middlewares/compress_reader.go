@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
 type compressReader struct {
@@ -48,7 +50,12 @@ func WithUnzipRequest(next http.Handler) http.Handler {
 				return
 			}
 			r.Body = cr
-			defer cr.Close()
+			defer func() {
+				err := cr.Close()
+				if err != nil {
+					logger.Log.Errorf("ошибка закрытия reader, %s", err.Error())
+				}
+			}()
 		}
 
 		next.ServeHTTP(w, r)
