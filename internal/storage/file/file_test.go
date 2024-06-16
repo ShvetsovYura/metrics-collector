@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -18,7 +19,10 @@ func TestDump(t *testing.T) {
 	mem := memory.NewMemStorage(40)
 	path := "tt.txt"
 	defer func() {
-		os.Remove(path)
+		err := os.Remove(path)
+		if err != nil {
+			fmt.Printf("Не удается удалить файл, %s", err.Error())
+		}
 	}()
 	fs := NewFileStorage(path, mem, false, 0)
 	var g = make(map[string]float64, 10)

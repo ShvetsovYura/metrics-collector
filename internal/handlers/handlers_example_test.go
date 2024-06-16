@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 
@@ -27,7 +28,10 @@ func ExampleDBPingHandler() {
 		fmt.Println(err.Error())
 	}
 	defer func() {
-		_ = resp.Body.Close()
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
+		}
 	}()
 	fmt.Println(resp.Status)
 
@@ -60,13 +64,21 @@ func ExampleMetricBatchUpdateHandler() {
 	}}
 	var body bytes.Buffer
 	jsonEncoder := json.NewEncoder(&body)
-	jsonEncoder.Encode(metrics)
+	err := jsonEncoder.Encode(metrics)
+	if err != nil {
+		log.Fatalf("не удалось преобразовать в json, %s", err.Error())
+	}
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/updates/", &body)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
+		}
+	}()
 	fmt.Println(resp.Status)
 
 	// Output:
@@ -81,7 +93,7 @@ func ExampleMetricGetCurrentValuesHandler() {
 		"freeSpace": 9563738.322,
 		"maxLoad":   97.34,
 	})
-	s.SetCounter(ctx, "count", 4)
+	_ = s.SetCounter(ctx, "count", 4)
 	routes := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(routes)
 	defer ts.Close()
@@ -90,7 +102,12 @@ func ExampleMetricGetCurrentValuesHandler() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
+		}
+	}()
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Println(string(body))
 	// Output:
@@ -118,10 +135,15 @@ func ExampleMetricGetValueHandlerWithBody() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
+		}
+	}()
 	var m models.Metrics
 	respBytes, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(respBytes, &m)
+	_ = json.Unmarshal(respBytes, &m)
 
 	fmt.Println(resp.Status)
 
@@ -149,7 +171,12 @@ func ExampleMetricUpdateHandlerWithBody() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
+		}
+	}()
 	respBytes, _ := io.ReadAll(resp.Body)
 	fmt.Println(resp.Status)
 	fmt.Println(string(respBytes))
@@ -177,8 +204,12 @@ func ExampleMetricGetValueHandler() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	defer resp.Body.Close()
-
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
+		}
+	}()
 	respBytes, _ := io.ReadAll(resp.Body)
 
 	fmt.Println(resp.Status)
@@ -201,7 +232,12 @@ func ExampleMetricUpdateHandler() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
+		}
+	}()
 	fmt.Println(resp.Status)
 	// Output:
 	// 200 OK

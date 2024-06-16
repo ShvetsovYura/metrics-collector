@@ -9,7 +9,7 @@ import (
 
 // AgentOptoins хранит информацию настроек запуска
 // и выполнения агента сбора метрик
-type AgentOptions struct {
+type Options struct {
 	// EndpointAddr: адрес отправки метрик
 	EndpointAddr string `env:"ADDRESS"`
 	// ReportInterval: интервал отправки метрик на сервер
@@ -24,7 +24,7 @@ type AgentOptions struct {
 
 // ParseArgs  парсит входные аргументы в структуру AgentOptions
 // если не переданы - берутся значения по-умолчнаию
-func (o *AgentOptions) ParseArgs() {
+func (o *Options) ParseArgs() {
 	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "server endpoint address")
 	flag.IntVar(&o.PoolInterval, "p", 2, "metrics gather interval")
 	flag.IntVar(&o.ReportInterval, "r", 10, "interval send metrics to server")
@@ -34,7 +34,7 @@ func (o *AgentOptions) ParseArgs() {
 }
 
 // ParseEnvs парсит переменные окружения в структуру AgentOptions
-func (o *AgentOptions) ParseEnvs() error {
+func (o *Options) ParseEnvs() error {
 	if err := env.Parse(o); err != nil {
 		return errors.New("failed to parse agent env")
 	}

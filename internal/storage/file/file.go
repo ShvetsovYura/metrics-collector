@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
@@ -48,7 +49,10 @@ func NewFileStorage(pathToFile string, memStorage MemoryStore, restore bool, sto
 	}
 
 	if restore {
-		s.Restore(context.Background())
+		err := s.Restore(context.Background())
+		if err != nil {
+			logger.Log.Errorf("Ошибка при восстановлении метрик из файла, %s", err.Error())
+		}
 	}
 	return s
 }
@@ -86,8 +90,12 @@ func (fs *FileStorage) Dump(gauges map[string]float64, counters map[string]int64
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Log.Errorf("ошибка закрытия файла, %s", err.Error())
+		}
+	}()
 	di := DumpItem{Gauges: gauges, Counters: counters}
 
 	data, err := json.MarshalIndent(di, "", "  ")
@@ -95,7 +103,10 @@ func (fs *FileStorage) Dump(gauges map[string]float64, counters map[string]int64
 		return err
 	}
 
-	f.Write(data)
+	_, err = f.Write(data)
+	if err != nil {
+		return fmt.Errorf("ошибка записи в файл, %w", err)
+	}
 	return nil
 }
 
@@ -125,7 +136,10 @@ func (fs *FileStorage) RestoreNow() (map[string]float64, map[string]int64, error
 
 func (fs *FileStorage) SaveNow() {
 	if fs.immediately {
-		fs.Save()
+		err := fs.Save()
+		if err != nil {
+			logger.Log.Errorf("ошибка сохранения метрик в файл, %s", err.Error())
+		}
 	}
 }
 

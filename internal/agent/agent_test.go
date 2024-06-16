@@ -11,7 +11,7 @@ import (
 func TestAgent_collectMetricsGenerator(t *testing.T) {
 	type fields struct {
 		metrics map[string]MetricItem
-		options *AgentOptions
+		options *Options
 	}
 	type args struct {
 		ctx context.Context
@@ -56,7 +56,7 @@ func TestAgent_collectMetricsGenerator(t *testing.T) {
 func TestAgent_processMetrics(t *testing.T) {
 	type fields struct {
 		metrics map[string]MetricItem
-		options *AgentOptions
+		options *Options
 	}
 	type args struct {
 		metricsCh <-chan MetricItem

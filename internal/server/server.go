@@ -23,11 +23,11 @@ type Server struct {
 	// но тогда не понятно - как сохранять метрики в файл в `Run`
 	storage   StorageCloser
 	webserver *http.Server
-	options   *ServerOptions
+	options   *Options
 }
 
 // NewServer, создает новый сервер работы с метриками.
-func NewServer(metricsCount int, opt *ServerOptions) *Server {
+func NewServer(metricsCount int, opt *Options) *Server {
 	var targetStorage handlers.Storage
 	var saverStorage StorageCloser
 	dbCtx := context.Background()
@@ -78,22 +78,29 @@ func (s *Server) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				logger.Log.Info("Останавливаю http сервер...")
-				s.webserver.Shutdown(ctx)
+				err := s.webserver.Shutdown(ctx)
+				if err != nil {
+					logger.Log.Fatalf("не удалось остановить сервер %w", err)
+				}
 				logger.Log.Info("http сервер остановлен!")
 				// используется для сохранения метрик в файл
 				// но реализован только для файлового стораджа
 				// в остальных - методы-заглушки
-				err := s.storage.Save()
+				err = s.storage.Save()
 				if err != nil {
 					logger.Log.Error(err)
 				}
 				return
 			case <-ticker.C:
-				s.storage.Save()
+				err := s.storage.Save()
+				if err != nil {
+					logger.Log.Errorf("Ошибка сохранения метрик, %s", err.Error())
+				}
 			}
 		}
 	}()
-	s.webserver.ListenAndServe()
+	err := s.webserver.ListenAndServe()
+	logger.Log.Fatalf("не удалось запусить web сервер, %w", err)
 	wg.Wait()
 	return nil
 }

@@ -192,7 +192,12 @@ func (db *DBStore) SaveGaugesBatch(ctx context.Context, gauges map[string]metric
 		batch.Queue(stmt, args)
 	}
 	results := db.pool.SendBatch(ctx, batch)
-	defer results.Close()
+	defer func() {
+		err := results.Close()
+		if err != nil {
+			logger.Log.Errorf("не удалось закрыть запрос, %w", err)
+		}
+	}()
 	_, err := results.Exec()
 	if err != nil {
 		return err
@@ -211,7 +216,12 @@ func (db *DBStore) SaveCountersBatch(ctx context.Context, counters map[string]me
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		err := tx.Rollback(ctx)
+		if err != nil {
+			logger.Log.Errorf("ошибка отката транзакции, %s", err.Error())
+		}
+	}()
 	for k, v := range counters {
 		stmt, args, err := insertStmt.Values(k, *v.GetRawValue()).ToSql()
 		if err != nil {

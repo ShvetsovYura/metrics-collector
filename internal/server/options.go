@@ -8,7 +8,7 @@ import (
 )
 
 // ServerOptions, хранит опции сервера сбора метрик.
-type ServerOptions struct {
+type Options struct {
 	EndpointAddr    string `env:"ADDRESS"`           // адрес запуска сервера сбора метрик
 	StoreInterval   int    `env:"STORE_INTERVAL"`    // интервал сохранения метрик в хранилище
 	FileStoragePath string `env:"FILE_STORAGE_PATH"` // путь до сохранения метрик в файл
@@ -18,7 +18,7 @@ type ServerOptions struct {
 }
 
 // ParseArgs, парсит значения аргументов в опции сервера сбора метрик.
-func (o *ServerOptions) ParseArgs() {
+func (o *Options) ParseArgs() {
 	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "endpoint address")
 	flag.IntVar(&o.StoreInterval, "i", 300, "interval to store data on file. 0 for immediately")
 	flag.StringVar(&o.FileStoragePath, "f", "/tmp/metrics-db.json", "path to save metrics values")
@@ -30,7 +30,7 @@ func (o *ServerOptions) ParseArgs() {
 }
 
 // ParseEnvs, парсит значения из переменных окружения в опции сервера сбора метрик.
-func (o *ServerOptions) ParseEnvs() error {
+func (o *Options) ParseEnvs() error {
 	if err := env.Parse(o); err != nil {
 		return errors.New("failed to parse server env")
 	}
