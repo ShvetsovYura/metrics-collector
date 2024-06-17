@@ -1,4 +1,4 @@
-package file
+package storage
 
 import (
 	"context"
@@ -6,8 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestDump(t *testing.T) {
-	mem := memory.NewMemStorage(40)
+	mem := NewMemory(40)
 	path := "tt.txt"
 	defer func() {
 		err := os.Remove(path)
@@ -24,7 +23,7 @@ func TestDump(t *testing.T) {
 			fmt.Printf("Не удается удалить файл, %s", err.Error())
 		}
 	}()
-	fs := NewFileStorage(path, mem, false, 0)
+	fs := NewFile(path, mem, false, 0)
 	var g = make(map[string]float64, 10)
 	var c = make(map[string]int64, 2)
 	g["Alloc"] = 44.1
@@ -52,11 +51,11 @@ func TestFileStorage_ExtractGauges(t *testing.T) {
 	type fields struct {
 		path        string
 		immediately bool
-		memStorage  MemoryStore
+		memStorage  Memory
 	}
 	type args struct {
 		ctx     context.Context
-		mockOut map[string]metric.Gauge
+		mockOut map[string]models.Gauge
 	}
 
 	tests := []struct {
@@ -74,10 +73,10 @@ func TestFileStorage_ExtractGauges(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				mockOut: map[string]metric.Gauge{
-					"memsize": metric.Gauge(1234.45),
-					"oprate":  metric.Gauge(0.3566),
-					"other":   metric.Gauge(-134.3),
+				mockOut: map[string]models.Gauge{
+					"memsize": models.Gauge(1234.45),
+					"oprate":  models.Gauge(0.3566),
+					"other":   models.Gauge(-134.3),
 				},
 			},
 			want: map[string]float64{
@@ -90,7 +89,7 @@ func TestFileStorage_ExtractGauges(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m.EXPECT().GetGauges(tt.args.ctx).Return(tt.args.mockOut)
-			fs := &FileStorage{
+			fs := &File{
 				path:        tt.fields.path,
 				immediately: tt.fields.immediately,
 				memStorage:  tt.fields.memStorage,
@@ -109,11 +108,11 @@ func TestFileStorage_ExtractCounters(t *testing.T) {
 	type fields struct {
 		path        string
 		immediately bool
-		memStorage  MemoryStore
+		memStorage  Memory
 	}
 	type args struct {
 		ctx     context.Context
-		mockOut map[string]metric.Counter
+		mockOut map[string]models.Counter
 	}
 
 	tests := []struct {
@@ -131,7 +130,7 @@ func TestFileStorage_ExtractCounters(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				mockOut: map[string]metric.Counter{
+				mockOut: map[string]models.Counter{
 					"counter":      152,
 					"zero_counter": 0,
 				},
@@ -145,7 +144,7 @@ func TestFileStorage_ExtractCounters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m.EXPECT().GetCounters(tt.args.ctx).Return(tt.args.mockOut)
-			fs := &FileStorage{
+			fs := &storage.File{
 				path:        tt.fields.path,
 				immediately: tt.fields.immediately,
 				memStorage:  tt.fields.memStorage,

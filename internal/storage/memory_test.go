@@ -1,4 +1,4 @@
-package memory
+package storage
 
 import (
 	"context"
@@ -9,15 +9,14 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
 )
 
 func TestMemStorage_ToList(t *testing.T) {
 	type fields struct {
-		gaugeMetrics  map[string]metric.Gauge
-		counterMetric map[string]metric.Counter
+		gaugeMetrics  map[string]models.Gauge
+		counterMetric map[string]models.Counter
 	}
 	type args struct {
 		ctx context.Context
@@ -31,13 +30,13 @@ func TestMemStorage_ToList(t *testing.T) {
 	}{{
 		name: "Get list of memory metrics",
 		fields: fields{
-			gaugeMetrics: map[string]metric.Gauge{
-				"gMetric1": metric.Gauge(0.1935),
-				"gMetric2": metric.Gauge(-123),
-				"gMetirc3": metric.Gauge(3.45601),
+			gaugeMetrics: map[string]models.Gauge{
+				"gMetric1": models.Gauge(0.1935),
+				"gMetric2": models.Gauge(-123),
+				"gMetirc3": models.Gauge(3.45601),
 			},
-			counterMetric: map[string]metric.Counter{
-				"counter": metric.Counter(999),
+			counterMetric: map[string]models.Counter{
+				"counter": models.Counter(999),
 			},
 		},
 		args: args{
@@ -49,7 +48,7 @@ func TestMemStorage_ToList(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{
+			m := &Memory{
 				mx:            sync.Mutex{},
 				gaugeMetrics:  tt.fields.gaugeMetrics,
 				counterMetric: tt.fields.counterMetric,
@@ -65,8 +64,8 @@ func TestMemStorage_ToList(t *testing.T) {
 
 func TestMemStorage_SetCounter_(t *testing.T) {
 	type fields struct {
-		gaugeMetrics  map[string]metric.Gauge
-		counterMetric map[string]metric.Counter
+		gaugeMetrics  map[string]models.Gauge
+		counterMetric map[string]models.Counter
 	}
 	type args struct {
 		ctx  context.Context
@@ -82,8 +81,8 @@ func TestMemStorage_SetCounter_(t *testing.T) {
 		{
 			name: "set simple counter value",
 			fields: fields{
-				gaugeMetrics:  make(map[string]metric.Gauge),
-				counterMetric: make(map[string]metric.Counter),
+				gaugeMetrics:  make(map[string]models.Gauge),
+				counterMetric: make(map[string]models.Counter),
 			},
 			args: args{
 				ctx:  context.Background(),
@@ -95,7 +94,7 @@ func TestMemStorage_SetCounter_(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{
+			m := &Memory{
 				mx:            sync.Mutex{},
 				gaugeMetrics:  tt.fields.gaugeMetrics,
 				counterMetric: tt.fields.counterMetric,
@@ -110,8 +109,8 @@ func TestMemStorage_SetCounter_(t *testing.T) {
 
 func TestMemStorage_SetGauge(t *testing.T) {
 	type fields struct {
-		gaugeMetrics  map[string]metric.Gauge
-		counterMetric map[string]metric.Counter
+		gaugeMetrics  map[string]models.Gauge
+		counterMetric map[string]models.Counter
 	}
 	type args struct {
 		ctx  context.Context
@@ -127,8 +126,8 @@ func TestMemStorage_SetGauge(t *testing.T) {
 		{
 			name: "success set gauge metric",
 			fields: fields{
-				gaugeMetrics:  make(map[string]metric.Gauge),
-				counterMetric: make(map[string]metric.Counter),
+				gaugeMetrics:  make(map[string]models.Gauge),
+				counterMetric: make(map[string]models.Counter),
 			},
 			args:    args{ctx: context.Background(), name: "gauge1", val: 123.456},
 			wantErr: false,
@@ -136,7 +135,7 @@ func TestMemStorage_SetGauge(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{
+			m := &Memory{
 				mx:            sync.Mutex{},
 				gaugeMetrics:  tt.fields.gaugeMetrics,
 				counterMetric: tt.fields.counterMetric,
@@ -152,12 +151,12 @@ func TestMemStorage_SetGauge(t *testing.T) {
 
 func TestMemStorage_GetGauge(t *testing.T) {
 	type fields struct {
-		gaugeMetrics  map[string]metric.Gauge
-		counterMetric map[string]metric.Counter
+		gaugeMetrics  map[string]models.Gauge
+		counterMetric map[string]models.Counter
 	}
 	initFields := fields{
-		gaugeMetrics:  make(map[string]metric.Gauge),
-		counterMetric: make(map[string]metric.Counter),
+		gaugeMetrics:  make(map[string]models.Gauge),
+		counterMetric: make(map[string]models.Counter),
 	}
 	type args struct {
 		ctx  context.Context
@@ -167,19 +166,19 @@ func TestMemStorage_GetGauge(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    metric.Gauge
+		want    models.Gauge
 		wantErr bool
 	}{
 		{name: "success get gauge",
 			fields:  initFields,
 			args:    args{ctx: context.TODO(), name: "counter1"},
-			want:    metric.Gauge(123.456),
+			want:    models.Gauge(123.456),
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{
+			m := &Memory{
 				mx:            sync.Mutex{},
 				gaugeMetrics:  tt.fields.gaugeMetrics,
 				counterMetric: tt.fields.counterMetric,
@@ -201,7 +200,7 @@ func TestMemStorage_GetGauge(t *testing.T) {
 func BenchmarkMemoryStorage(b *testing.B) {
 	items := 100000
 	b.Run("memory storage without init metrics counts", func(b *testing.B) {
-		ms := NewMemStorage(0)
+		ms := NewMemory(0)
 		gauges := make(map[string]float64, items)
 		max := 100000.0
 		min := 1.0
@@ -215,7 +214,7 @@ func BenchmarkMemoryStorage(b *testing.B) {
 		}
 	})
 	b.Run("memory storage with init metrics counts", func(b *testing.B) {
-		ms := NewMemStorage(100000)
+		ms := NewMemory(100000)
 		gauges := make(map[string]float64, items)
 		max := 100000.0
 		min := 1.0

@@ -1,4 +1,4 @@
-package memory
+package storage
 
 import (
 	"context"
@@ -7,35 +7,35 @@ import (
 	"sync"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 )
 
 type Metric interface {
 	ToString() string
 }
 
-type MemStorage struct {
+type Memory struct {
 	mx            sync.Mutex
-	gaugeMetrics  map[string]metric.Gauge
-	counterMetric map[string]metric.Counter
+	gaugeMetrics  map[string]models.Gauge
+	counterMetric map[string]models.Counter
 }
 
-func NewMemStorage(metricsCount int) *MemStorage {
-	m := MemStorage{
-		gaugeMetrics:  make(map[string]metric.Gauge, metricsCount),
-		counterMetric: make(map[string]metric.Counter, 1),
+func NewMemory(metricsCount int) *Memory {
+	m := Memory{
+		gaugeMetrics:  make(map[string]models.Gauge, metricsCount),
+		counterMetric: make(map[string]models.Counter, 1),
 	}
 	return &m
 }
 
-func (m *MemStorage) SetGauge(_ context.Context, name string, val float64) error {
+func (m *Memory) SetGauge(_ context.Context, name string, val float64) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
-	m.gaugeMetrics[name] = metric.Gauge(val)
+	m.gaugeMetrics[name] = models.Gauge(val)
 	return nil
 }
 
-func (m *MemStorage) SetGauges(_ context.Context, gauges map[string]float64) {
+func (m *Memory) SetGauges(_ context.Context, gauges map[string]float64) {
 	for k, v := range gauges {
 		err := m.SetGauge(context.TODO(), k, v)
 		if err != nil {
@@ -44,7 +44,7 @@ func (m *MemStorage) SetGauges(_ context.Context, gauges map[string]float64) {
 	}
 }
 
-func (m *MemStorage) SetCounters(_ context.Context, counters map[string]int64) {
+func (m *Memory) SetCounters(_ context.Context, counters map[string]int64) {
 	for k, v := range counters {
 		err := m.SetCounter(context.TODO(), k, v)
 		if err != nil {
@@ -53,14 +53,14 @@ func (m *MemStorage) SetCounters(_ context.Context, counters map[string]int64) {
 	}
 }
 
-func (m *MemStorage) SetCounter(_ context.Context, name string, val int64) error {
+func (m *Memory) SetCounter(_ context.Context, name string, val int64) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
-	m.counterMetric[name] += metric.Counter(val)
+	m.counterMetric[name] += models.Counter(val)
 	return nil
 }
 
-func (m *MemStorage) GetGauge(_ context.Context, name string) (metric.Gauge, error) {
+func (m *Memory) GetGauge(_ context.Context, name string) (models.Gauge, error) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
@@ -71,7 +71,7 @@ func (m *MemStorage) GetGauge(_ context.Context, name string) (metric.Gauge, err
 	}
 }
 
-func (m *MemStorage) GetCounter(_ context.Context, name string) (metric.Counter, error) {
+func (m *Memory) GetCounter(_ context.Context, name string) (models.Counter, error) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	if val, ok := m.counterMetric[name]; ok {
@@ -81,15 +81,15 @@ func (m *MemStorage) GetCounter(_ context.Context, name string) (metric.Counter,
 	}
 }
 
-func (m *MemStorage) GetGauges(_ context.Context) map[string]metric.Gauge {
+func (m *Memory) GetGauges(_ context.Context) map[string]models.Gauge {
 	return m.gaugeMetrics
 }
 
-func (m *MemStorage) GetCounters(_ context.Context) map[string]metric.Counter {
+func (m *Memory) GetCounters(_ context.Context) map[string]models.Counter {
 	return m.counterMetric
 }
 
-func (m *MemStorage) ToList(_ context.Context) ([]string, error) {
+func (m *Memory) ToList(_ context.Context) ([]string, error) {
 	var list []string
 
 	gaugeKeys := make([]string, 0, len(m.gaugeMetrics))
@@ -116,19 +116,19 @@ func (m *MemStorage) ToList(_ context.Context) ([]string, error) {
 	return list, nil
 }
 
-func (m *MemStorage) Ping(_ context.Context) error {
+func (m *Memory) Ping(_ context.Context) error {
 	return nil
 }
 
-func (m *MemStorage) SaveGaugesBatch(_ context.Context, gauges map[string]metric.Gauge) error {
+func (m *Memory) SaveGaugesBatch(_ context.Context, gauges map[string]models.Gauge) error {
 	return nil
 }
-func (m *MemStorage) SaveCountersBatch(_ context.Context, couters map[string]metric.Counter) error {
+func (m *Memory) SaveCountersBatch(_ context.Context, couters map[string]models.Counter) error {
 	return nil
 }
-func (m *MemStorage) Save() error {
+func (m *Memory) Save() error {
 	return nil
 }
-func (m *MemStorage) Restore(_ context.Context) error {
+func (m *Memory) Restore(_ context.Context) error {
 	return nil
 }

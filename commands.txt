@@ -1,1 +1,2 @@
 sudo metricstest -test.v -test.run=^TestIteration1$ -binary-path=cmd/server/server
+mockgen -destination mocks/mock_mem_store.go -package=mocks github.com/ShvetsovYura/metrics-collector/internal/storage MemoryStore

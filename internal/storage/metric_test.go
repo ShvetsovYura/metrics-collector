@@ -1,19 +1,21 @@
-package metric
+package storage_test
 
 import (
 	"testing"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 )
 
 func TestGauge_GetRawValue(t *testing.T) {
 	wanted := []float64{123.456, 0, -123.456}
 	tests := []struct {
 		name string
-		g    Gauge
+		g    models.Gauge
 		want *float64
 	}{
 		{
 			name: "get gauge raw value",
-			g:    Gauge(wanted[0]),
+			g:    models.Gauge(wanted[0]),
 			want: &wanted[0],
 		},
 	}
@@ -31,12 +33,12 @@ func TestCounter_GetRawValue(t *testing.T) {
 
 	tests := []struct {
 		name string
-		c    Counter
+		c    models.Counter
 		want *int64
 	}{
 		{
 			name: "correct counter value",
-			c:    Counter(wanted[0]),
+			c:    models.Counter(wanted[0]),
 			want: &wanted[0],
 		},
 	}

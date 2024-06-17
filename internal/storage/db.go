@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
 	"context"
@@ -8,14 +8,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 )
 
-type DBStore struct {
+type DB struct {
 	pool *pgxpool.Pool
 }
 
-func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
+func NewDBPool(ctx context.Context, connString string) (*DB, error) {
 	connPool, err := pgxpool.New(ctx, connString)
 	if err != nil {
 		logger.Log.Error(err.Error())
@@ -26,7 +26,7 @@ func NewDBPool(ctx context.Context, connString string) (*DBStore, error) {
 		return nil, createErr
 	}
 
-	return &DBStore{pool: connPool}, nil
+	return &DB{pool: connPool}, nil
 }
 
 func createTables(ctx context.Context, connectionPool *pgxpool.Pool) error {
@@ -53,7 +53,7 @@ func createTables(ctx context.Context, connectionPool *pgxpool.Pool) error {
 	return err
 }
 
-func (db *DBStore) SetGauge(ctx context.Context, name string, value float64) error {
+func (db *DB) SetGauge(ctx context.Context, name string, value float64) error {
 	tag, err := db.pool.Exec(ctx,
 		`
 		insert into gauge (name, value) values($1, $2)
@@ -67,7 +67,7 @@ func (db *DBStore) SetGauge(ctx context.Context, name string, value float64) err
 	return nil
 }
 
-func (db *DBStore) SetCounter(ctx context.Context, name string, value int64) error {
+func (db *DB) SetCounter(ctx context.Context, name string, value int64) error {
 	stmt, args, _ := sq.Insert("counter").
 		Columns("name", "value").
 		Values(name, value).
@@ -78,31 +78,31 @@ func (db *DBStore) SetCounter(ctx context.Context, name string, value int64) err
 	return err
 }
 
-func (db *DBStore) GetCounter(ctx context.Context, name_ string) (metric.Counter, error) {
+func (db *DB) GetCounter(ctx context.Context, name_ string) (models.Counter, error) {
 	stmt, args, _ := sq.Select("name", "value").From("counter").Where(sq.Eq{"name": name_}).PlaceholderFormat(sq.Dollar).ToSql()
 	row := db.pool.QueryRow(ctx, stmt, args...)
 	var name string
 	var value float64
 	err := row.Scan(&name, &value)
 	if err != nil {
-		return metric.Counter(0), err
+		return models.Counter(0), err
 	}
-	return metric.Counter(value), nil
+	return models.Counter(value), nil
 }
 
-func (db *DBStore) GetGauge(ctx context.Context, name_ string) (metric.Gauge, error) {
+func (db *DB) GetGauge(ctx context.Context, name_ string) (models.Gauge, error) {
 	stmt, args, _ := sq.Select("name", "value").From("gauge").Where(sq.Eq{"name": name_}).PlaceholderFormat(sq.Dollar).ToSql()
 	row := db.pool.QueryRow(ctx, stmt, args...)
 	var name string
 	var value float64
 	err := row.Scan(&name, &value)
 	if err != nil {
-		return metric.Gauge(0), err
+		return models.Gauge(0), err
 	}
-	return metric.Gauge(value), nil
+	return models.Gauge(value), nil
 }
 
-func (db *DBStore) GetGauges(ctx context.Context) (map[string]metric.Gauge, error) {
+func (db *DB) GetGauges(ctx context.Context) (map[string]models.Gauge, error) {
 	stmt, _, err := sq.Select("name", "value").From("gauge").ToSql()
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (db *DBStore) GetGauges(ctx context.Context) (map[string]metric.Gauge, erro
 	if err != nil {
 		return nil, err
 	}
-	var gauges = make(map[string]metric.Gauge, 100)
+	var gauges = make(map[string]models.Gauge, 100)
 
 	for rows.Next() {
 		var name string
@@ -122,12 +122,12 @@ func (db *DBStore) GetGauges(ctx context.Context) (map[string]metric.Gauge, erro
 			return nil, err
 		}
 
-		gauges[name] = metric.Gauge(value)
+		gauges[name] = models.Gauge(value)
 	}
 	return gauges, nil
 }
 
-func (db *DBStore) GetCounters(ctx context.Context) (map[string]metric.Counter, error) {
+func (db *DB) GetCounters(ctx context.Context) (map[string]models.Counter, error) {
 	stmt, _, err := sq.Select("name", "value").From("couter").ToSql()
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func (db *DBStore) GetCounters(ctx context.Context) (map[string]metric.Counter, 
 	if err != nil {
 		return nil, err
 	}
-	var counters = make(map[string]metric.Counter, 1)
+	var counters = make(map[string]models.Counter, 1)
 
 	for rows.Next() {
 		var name string
@@ -147,13 +147,13 @@ func (db *DBStore) GetCounters(ctx context.Context) (map[string]metric.Counter, 
 			return nil, err
 		}
 
-		counters[name] = metric.Counter(value)
+		counters[name] = models.Counter(value)
 	}
 
 	return counters, nil
 }
 
-func (db *DBStore) ToList(ctx context.Context) ([]string, error) {
+func (db *DB) ToList(ctx context.Context) ([]string, error) {
 	var list []string
 	g, err := db.GetGauges(ctx)
 	if err != nil {
@@ -172,7 +172,7 @@ func (db *DBStore) ToList(ctx context.Context) ([]string, error) {
 	return list, nil
 }
 
-func (db *DBStore) Ping(ctx context.Context) error {
+func (db *DB) Ping(ctx context.Context) error {
 	err := db.pool.Ping(ctx)
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func (db *DBStore) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (db *DBStore) SaveGaugesBatch(ctx context.Context, gauges map[string]metric.Gauge) error {
+func (db *DB) SaveGaugesBatch(ctx context.Context, gauges map[string]models.Gauge) error {
 	logger.Log.Info("save metrics in DBStorage GAUGES")
 	stmt := "insert into gauge(name, value) values(@name, @value) on conflict (name) do update set value=@value"
 	batch := &pgx.Batch{}
@@ -205,7 +205,7 @@ func (db *DBStore) SaveGaugesBatch(ctx context.Context, gauges map[string]metric
 	return nil
 }
 
-func (db *DBStore) SaveCountersBatch(ctx context.Context, counters map[string]metric.Counter) error {
+func (db *DB) SaveCountersBatch(ctx context.Context, counters map[string]models.Counter) error {
 	logger.Log.Info("save metrics in DBStorage COUNTERS")
 
 	insertStmt := sq.Insert("counter").Columns("name", "value").
@@ -235,10 +235,10 @@ func (db *DBStore) SaveCountersBatch(ctx context.Context, counters map[string]me
 	return tx.Commit(ctx)
 }
 
-func (db *DBStore) Save() error {
+func (db *DB) Save() error {
 	return nil
 }
 
-func (db *DBStore) Restore(ctx context.Context) error {
+func (db *DB) Restore(ctx context.Context) error {
 	return nil
 }

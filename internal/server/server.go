@@ -8,9 +8,7 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/db"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 )
 
 type StorageCloser interface {
@@ -33,17 +31,17 @@ func NewServer(metricsCount int, opt *Options) *Server {
 	dbCtx := context.Background()
 
 	if opt.DBDSN == "" {
-		m := memory.NewMemStorage(metricsCount)
+		m := storage.NewMemory(metricsCount)
 		if opt.FileStoragePath == "" {
 			saverStorage = m
 			targetStorage = m
 		} else {
-			f := file.NewFileStorage(opt.FileStoragePath, m, opt.Restore, opt.StoreInterval)
+			f := storage.NewFile(opt.FileStoragePath, m, opt.Restore, opt.StoreInterval)
 			saverStorage = f
 			targetStorage = f
 		}
 	} else {
-		d, err := db.NewDBPool(dbCtx, opt.DBDSN)
+		d, err := storage.NewDBPool(dbCtx, opt.DBDSN)
 		if err != nil {
 			logger.Log.Fatal("Не удалось подключиться к БД!")
 		}

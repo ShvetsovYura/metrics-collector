@@ -12,12 +12,11 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 )
 
 func ExampleDBPingHandler() {
-	s := memory.NewMemStorage(10)
+	s := storage.NewMemory(10)
 	routes := handlers.ServerRouter(s, "abc")
 	ts := httptest.NewServer(routes)
 	defer ts.Close()
@@ -41,14 +40,14 @@ func ExampleDBPingHandler() {
 }
 
 func ExampleMetricBatchUpdateHandler() {
-	s := memory.NewMemStorage(10)
+	s := storage.NewMemory(10)
 	routes := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(routes)
 	defer ts.Close()
 
-	gaugeValue1 := metric.Gauge(984.723)
-	gaugeValue2 := metric.Gauge(-234433.33)
-	counterValue := metric.Counter(4)
+	gaugeValue1 := models.Gauge(984.723)
+	gaugeValue2 := models.Gauge(-234433.33)
+	counterValue := models.Counter(4)
 	metrics := []models.Metrics{{
 		ID:    "gaugeMetric1",
 		MType: "gauge",
@@ -86,7 +85,7 @@ func ExampleMetricBatchUpdateHandler() {
 }
 
 func ExampleMetricGetCurrentValuesHandler() {
-	s := memory.NewMemStorage(10)
+	s := storage.NewMemory(10)
 	ctx := context.Background()
 	s.SetGauges(ctx, map[string]float64{
 		"memTotal":  345.43,
@@ -115,7 +114,7 @@ func ExampleMetricGetCurrentValuesHandler() {
 }
 
 func ExampleMetricGetValueHandlerWithBody() {
-	s := memory.NewMemStorage(10)
+	s := storage.NewMemory(10)
 	ctx := context.Background()
 	gauges := map[string]float64{
 		"memTotal":  345.43,
@@ -155,11 +154,11 @@ func ExampleMetricGetValueHandlerWithBody() {
 }
 
 func ExampleMetricUpdateHandlerWithBody() {
-	s := memory.NewMemStorage(10)
+	s := storage.NewMemory(10)
 	r := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(r)
 	defer ts.Close()
-	gauge := metric.Gauge(4011.1)
+	gauge := models.Gauge(4011.1)
 	reqBytes, _ := json.Marshal(models.Metrics{
 		ID:    "allocateMem",
 		MType: "gauge",
@@ -188,7 +187,7 @@ func ExampleMetricUpdateHandlerWithBody() {
 }
 
 func ExampleMetricGetValueHandler() {
-	s := memory.NewMemStorage(10)
+	s := storage.NewMemory(10)
 	ctx := context.Background()
 	gauges := map[string]float64{
 		"allogMem":  3718.23,
@@ -222,7 +221,7 @@ func ExampleMetricGetValueHandler() {
 }
 
 func ExampleMetricUpdateHandler() {
-	s := memory.NewMemStorage(10)
+	s := storage.NewMemory(10)
 	r := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(r)
 	defer ts.Close()

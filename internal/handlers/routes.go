@@ -12,13 +12,13 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/middlewares"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 )
 
 // StorageReader, интерфейс, определяющий поддержку чтение данных из стораджа.
 type StorageReader interface {
-	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
-	GetCounter(ctx context.Context, name string) (metric.Counter, error)
+	GetGauge(ctx context.Context, name string) (models.Gauge, error)
+	GetCounter(ctx context.Context, name string) (models.Counter, error)
 	Ping(ctx context.Context) error
 	ToList(ctx context.Context) ([]string, error)
 }
@@ -27,8 +27,8 @@ type StorageReader interface {
 type StorageWriter interface {
 	SetGauge(ctx context.Context, name string, val float64) error
 	SetCounter(ctx context.Context, name string, val int64) error
-	SaveGaugesBatch(context.Context, map[string]metric.Gauge) error
-	SaveCountersBatch(context.Context, map[string]metric.Counter) error
+	SaveGaugesBatch(context.Context, map[string]models.Gauge) error
+	SaveCountersBatch(context.Context, map[string]models.Counter) error
 }
 
 // Storage, интерфейс работы со стораджем.

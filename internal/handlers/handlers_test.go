@@ -19,15 +19,13 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 )
 
 type wantGauge struct {
 	code  int
 	mn    string
-	val   metric.Gauge
+	val   models.Gauge
 	isErr bool
 }
 
@@ -65,8 +63,8 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, data []
 }
 
 func TestMetricSetGaugeHandler(t *testing.T) {
-	mem := memory.NewMemStorage(40)
-	fs := file.NewFileStorage("tt.txt", mem, false, 0)
+	mem := storage.NewMemory(40)
+	fs := storage.NewFile("tt.txt", mem, false, 0)
 	router := ServerRouter(fs, "")
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -83,7 +81,7 @@ func TestMetricSetGaugeHandler(t *testing.T) {
 			method: http.MethodPost,
 			want: wantGauge{
 				code:  http.StatusOK,
-				val:   metric.Gauge(3.4),
+				val:   models.Gauge(3.4),
 				mn:    "Alloc",
 				isErr: false,
 			},
@@ -147,12 +145,12 @@ func TestMetricSetGaugeHandler(t *testing.T) {
 type wantCounter struct {
 	code  int
 	mn    string
-	val   metric.Counter
+	val   models.Counter
 	isErr bool
 }
 
 func TestMetricSetCounterHandler(t *testing.T) {
-	m := memory.NewMemStorage(40)
+	m := storage.NewMemory(40)
 	router := ServerRouter(m, "")
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -170,7 +168,7 @@ func TestMetricSetCounterHandler(t *testing.T) {
 			method: http.MethodPost,
 			want: wantCounter{
 				code:  http.StatusOK,
-				val:   metric.Counter(3),
+				val:   models.Counter(3),
 				mn:    "PollCount",
 				isErr: false,
 			},
@@ -215,7 +213,7 @@ func TestMetricSetCounterHandler(t *testing.T) {
 
 func TestMetricGetValueHandler(t *testing.T) {
 	ctx := context.Background()
-	m := memory.NewMemStorage(40)
+	m := storage.NewMemory(40)
 	err := m.SetGauge(ctx, "Alloc", 3.1234)
 	if err != nil {
 		t.Fatalf("не удалось установить метрику, %s", err.Error())
@@ -259,7 +257,7 @@ func TestMetricGetValueHandler(t *testing.T) {
 }
 
 func TestMetricGetAllValueHandler1(t *testing.T) {
-	m := memory.NewMemStorage(40)
+	m := storage.NewMemory(40)
 	ctx := context.Background()
 	err := m.SetGauge(ctx, "Alloc", 3.1234)
 	if err != nil {
@@ -302,9 +300,9 @@ func TestMetricGetAllValueHandler1(t *testing.T) {
 }
 
 func TestMetricUpdateHandler(t *testing.T) {
-	mem := memory.NewMemStorage(40)
+	mem := storage.NewMemory(40)
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, mem, true, 0)
+	fs := storage.NewFile(fsPath, mem, true, 0)
 
 	router := ServerRouter(fs, "")
 	ts := httptest.NewServer(router)
@@ -379,9 +377,9 @@ func TestMetricUpdateHandler(t *testing.T) {
 }
 
 func TestMetricValueHandler(t *testing.T) {
-	mem := memory.NewMemStorage(40)
+	mem := storage.NewMemory(40)
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, mem, true, 0)
+	fs := storage.NewFile(fsPath, mem, true, 0)
 	ctx := context.Background()
 	err := fs.SetGauge(ctx, "Alloc", 3.1234)
 	if err != nil {
@@ -464,9 +462,9 @@ func TestMetricValueHandler(t *testing.T) {
 }
 
 func TestMetricGetAllValueHandler(t *testing.T) {
-	mem := memory.NewMemStorage(40)
+	mem := storage.NewMemory(40)
 	fsPath := "/tmp/myFileStorage.txt"
-	fs := file.NewFileStorage(fsPath, mem, true, 0)
+	fs := storage.NewFile(fsPath, mem, true, 0)
 	ctx := context.Background()
 	err := fs.SetGauge(ctx, "Alloc", 3.1234)
 	if err != nil {
@@ -514,18 +512,18 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 }
 
 func TestMetricBatchUpdateHandler(t *testing.T) {
-	mem := memory.NewMemStorage(40)
+	mem := storage.NewMemory(40)
 	router := ServerRouter(mem, "")
 	ts := httptest.NewServer(router)
 	defer func() {
 		ts.Close()
 	}()
-	gaugeWants := []metric.Gauge{123.56, 0.0}
-	counterWants := []metric.Counter{0, 112, 1}
+	gaugeWants := []models.Gauge{123.56, 0.0}
+	counterWants := []models.Counter{0, 112, 1}
 	tests := []struct {
 		name       string
 		input      []models.Metrics
-		want       []metric.Gauge
+		want       []models.Gauge
 		wantStatus int
 	}{{
 		name: "many gauge metrics",
