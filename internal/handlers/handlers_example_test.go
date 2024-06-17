@@ -19,19 +19,23 @@ func ExampleDBPingHandler() {
 	s := storage.NewMemory(10)
 	routes := handlers.ServerRouter(s, "abc")
 	ts := httptest.NewServer(routes)
+
 	defer ts.Close()
 
 	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/ping", nil)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
 			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
 		}
 	}()
+
 	fmt.Println(resp.Status)
 
 	// Output:
@@ -43,12 +47,13 @@ func ExampleMetricBatchUpdateHandler() {
 	s := storage.NewMemory(10)
 	routes := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(routes)
+
 	defer ts.Close()
 
 	gaugeValue1 := models.Gauge(984.723)
 	gaugeValue2 := models.Gauge(-234433.33)
 	counterValue := models.Counter(4)
-	metrics := []models.Metrics{{
+	metrics := []models.MetricItem{{
 		ID:    "gaugeMetric1",
 		MType: "gauge",
 		Value: gaugeValue1.GetRawValue(),
@@ -61,23 +66,29 @@ func ExampleMetricBatchUpdateHandler() {
 		MType: "counter",
 		Delta: counterValue.GetRawValue(),
 	}}
+
 	var body bytes.Buffer
 	jsonEncoder := json.NewEncoder(&body)
+
 	err := jsonEncoder.Encode(metrics)
 	if err != nil {
 		log.Fatalf("не удалось преобразовать в json, %s", err.Error())
 	}
+
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/updates/", &body)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
 			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
 		}
 	}()
+
 	fmt.Println(resp.Status)
 
 	// Output:
@@ -92,21 +103,28 @@ func ExampleMetricGetCurrentValuesHandler() {
 		"freeSpace": 9563738.322,
 		"maxLoad":   97.34,
 	})
+
 	_ = s.SetCounter(ctx, "count", 4)
+
 	routes := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(routes)
+
 	defer ts.Close()
+
 	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/", nil)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
 			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
 		}
 	}()
+
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Println(string(body))
 	// Output:
@@ -124,23 +142,29 @@ func ExampleMetricGetValueHandlerWithBody() {
 	s.SetGauges(ctx, gauges)
 	routes := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(routes)
+
 	defer ts.Close()
-	reqBytes, _ := json.Marshal(models.Metrics{
+
+	reqBytes, _ := json.Marshal(models.MetricItem{
 		ID: "memTotal", MType: "gauge",
 	})
 	reqBody := bytes.NewBuffer(reqBytes)
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/value/", reqBody)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
 			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
 		}
 	}()
-	var m models.Metrics
+
+	var m models.MetricItem
+
 	respBytes, _ := io.ReadAll(resp.Body)
 	_ = json.Unmarshal(respBytes, &m)
 
@@ -157,25 +181,30 @@ func ExampleMetricUpdateHandlerWithBody() {
 	s := storage.NewMemory(10)
 	r := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(r)
+
 	defer ts.Close()
+
 	gauge := models.Gauge(4011.1)
-	reqBytes, _ := json.Marshal(models.Metrics{
+	reqBytes, _ := json.Marshal(models.MetricItem{
 		ID:    "allocateMem",
 		MType: "gauge",
 		Value: gauge.GetRawValue(),
 	})
 	reqBuf := bytes.NewBuffer(reqBytes)
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/update/", reqBuf)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
 			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
 		}
 	}()
+
 	respBytes, _ := io.ReadAll(resp.Body)
 	fmt.Println(resp.Status)
 	fmt.Println(string(respBytes))
@@ -183,7 +212,6 @@ func ExampleMetricUpdateHandlerWithBody() {
 	// Output:
 	// 200 OK
 	// {"id":"allocateMem","type":"gauge","value":4011.1}
-
 }
 
 func ExampleMetricGetValueHandler() {
@@ -197,18 +225,23 @@ func ExampleMetricGetValueHandler() {
 	s.SetGauges(ctx, gauges)
 	r := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(r)
+
 	defer ts.Close()
+
 	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/value/gauge/freeMem", nil)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
 			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
 		}
 	}()
+
 	respBytes, _ := io.ReadAll(resp.Body)
 
 	fmt.Println(resp.Status)
@@ -217,26 +250,29 @@ func ExampleMetricGetValueHandler() {
 	// Output:
 	// 200 OK
 	// 1528.3
-
 }
 
 func ExampleMetricUpdateHandler() {
 	s := storage.NewMemory(10)
 	r := handlers.ServerRouter(s, "key")
 	ts := httptest.NewServer(r)
+
 	defer ts.Close()
 
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/update/gauge/allocMem/2139.43", nil)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
 			fmt.Printf("ошибка при закрытии тела запроса, %s", err.Error())
 		}
 	}()
+
 	fmt.Println(resp.Status)
 	// Output:
 	// 200 OK

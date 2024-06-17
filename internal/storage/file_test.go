@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
+	"go.uber.org/mock/gomock"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ShvetsovYura/metrics-collector/mocks"
@@ -17,15 +17,21 @@ import (
 func TestDump(t *testing.T) {
 	mem := NewMemory(40)
 	path := "tt.txt"
+
 	defer func() {
 		err := os.Remove(path)
 		if err != nil {
 			fmt.Printf("Не удается удалить файл, %s", err.Error())
 		}
 	}()
+
 	fs := NewFile(path, mem, false, 0)
-	var g = make(map[string]float64, 10)
-	var c = make(map[string]int64, 2)
+
+	var (
+		g = make(map[string]float64, 10)
+		c = make(map[string]int64, 2)
+	)
+
 	g["Alloc"] = 44.1
 	g["OtherMetric"] = 123
 	c["PollCount"] = 10
@@ -34,6 +40,7 @@ func TestDump(t *testing.T) {
 	t.Run("test dump & resotre", func(t *testing.T) {
 		assert.NoError(t, err)
 		assert.FileExists(t, path)
+
 		gauges, counter, err := fs.RestoreNow()
 
 		assert.NoError(t, err)
@@ -51,8 +58,9 @@ func TestFileStorage_ExtractGauges(t *testing.T) {
 	type fields struct {
 		path        string
 		immediately bool
-		memStorage  Memory
+		memStorage  MemoryStore
 	}
+
 	type args struct {
 		ctx     context.Context
 		mockOut map[string]models.Gauge
@@ -108,8 +116,9 @@ func TestFileStorage_ExtractCounters(t *testing.T) {
 	type fields struct {
 		path        string
 		immediately bool
-		memStorage  Memory
+		memStorage  MemoryStore
 	}
+
 	type args struct {
 		ctx     context.Context
 		mockOut map[string]models.Counter
@@ -144,7 +153,7 @@ func TestFileStorage_ExtractCounters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m.EXPECT().GetCounters(tt.args.ctx).Return(tt.args.mockOut)
-			fs := &storage.File{
+			fs := &File{
 				path:        tt.fields.path,
 				immediately: tt.fields.immediately,
 				memStorage:  tt.fields.memStorage,

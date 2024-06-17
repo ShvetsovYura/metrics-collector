@@ -20,8 +20,10 @@ func main() {
 	if err != nil {
 		fmt.Println("Не удалось инициализировать лог")
 	}
+
 	opts := new(agent.Options)
 	opts.ParseArgs()
+
 	if err := opts.ParseEnvs(); err != nil {
 		log.Fatal(err.Error())
 	}
@@ -29,8 +31,9 @@ func main() {
 	a := agent.NewAgent(metricsCount, opts)
 
 	logger.Log.Info("Start agent app")
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
+
 	defer stop()
 	a.Run(ctx)
-
 }

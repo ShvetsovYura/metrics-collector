@@ -38,5 +38,6 @@ func (o *Options) ParseEnvs() error {
 	if err := env.Parse(o); err != nil {
 		return errors.New("failed to parse agent env")
 	}
+
 	return nil
 }

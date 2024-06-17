@@ -39,7 +39,6 @@ type Storage interface {
 
 // ServerRouter, функция объявления роутинга http-запросов и их обработчиков.
 func ServerRouter(s Storage, key string) chi.Router {
-
 	logger.NewHTTPLogger()
 
 	r := chi.NewRouter()
@@ -73,5 +72,6 @@ func ServerRouter(s Storage, key string) chi.Router {
 		r.Get("/heap", pprof.Handler("heap").ServeHTTP)
 		r.Get("/trace", pprof.Trace)
 	})
+
 	return r
 }

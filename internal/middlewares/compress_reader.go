@@ -34,6 +34,7 @@ func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err
 	}
+
 	return c.zr.Close()
 }
 
@@ -43,13 +44,16 @@ func WithUnzipRequest(next http.Handler) http.Handler {
 		// распаковка входящих сжатых данных
 		contentEncoding := r.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
+
 		if sendsGzip {
 			cr, err := newCompressReader(r.Body)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+
 			r.Body = cr
+
 			defer func() {
 				err := cr.Close()
 				if err != nil {

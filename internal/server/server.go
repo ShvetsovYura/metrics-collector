@@ -26,9 +26,12 @@ type Server struct {
 
 // NewServer, создает новый сервер работы с метриками.
 func NewServer(metricsCount int, opt *Options) *Server {
-	var targetStorage handlers.Storage
-	var saverStorage StorageCloser
 	dbCtx := context.Background()
+
+	var (
+		targetStorage handlers.Storage
+		saverStorage  StorageCloser
+	)
 
 	if opt.DBDSN == "" {
 		m := storage.NewMemory(metricsCount)
@@ -45,9 +48,11 @@ func NewServer(metricsCount int, opt *Options) *Server {
 		if err != nil {
 			logger.Log.Fatal("Не удалось подключиться к БД!")
 		}
+
 		targetStorage = d
 		saverStorage = d
 	}
+
 	return &Server{
 		// из-за того, что удалил методы Save и Restore из интерфейса Storage
 		// приходится костылить такое - дублирование стораджа, но с другим интерфейсом
@@ -62,13 +67,14 @@ func NewServer(metricsCount int, opt *Options) *Server {
 
 // Run, запускает сервер.
 func (s *Server) Run(ctx context.Context) error {
-
 	logger.Log.Info("START HTTP SERVER")
+
 	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
 
 	var wg sync.WaitGroup
 
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
 
@@ -76,10 +82,12 @@ func (s *Server) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				logger.Log.Info("Останавливаю http сервер...")
+
 				err := s.webserver.Shutdown(ctx)
 				if err != nil {
 					logger.Log.Fatalf("не удалось остановить сервер %w", err)
 				}
+
 				logger.Log.Info("http сервер остановлен!")
 				// используется для сохранения метрик в файл
 				// но реализован только для файлового стораджа
@@ -88,6 +96,7 @@ func (s *Server) Run(ctx context.Context) error {
 				if err != nil {
 					logger.Log.Error(err)
 				}
+
 				return
 			case <-ticker.C:
 				err := s.storage.Save()
@@ -97,8 +106,10 @@ func (s *Server) Run(ctx context.Context) error {
 			}
 		}
 	}()
+
 	err := s.webserver.ListenAndServe()
 	logger.Log.Fatalf("не удалось запусить web сервер, %w", err)
 	wg.Wait()
+
 	return nil
 }

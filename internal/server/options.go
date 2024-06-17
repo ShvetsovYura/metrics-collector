@@ -34,5 +34,6 @@ func (o *Options) ParseEnvs() error {
 	if err := env.Parse(o); err != nil {
 		return errors.New("failed to parse server env")
 	}
+
 	return nil
 }

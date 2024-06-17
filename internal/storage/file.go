@@ -31,11 +31,11 @@ type File struct {
 }
 
 func NewFile(pathToFile string, memStorage MemoryStore, restore bool, storeInterval int) *File {
-
 	immediatelySave := false
 	if storeInterval == 0 {
 		immediatelySave = true
 	}
+
 	s := &File{
 		path:        pathToFile,
 		immediately: immediatelySave,
@@ -48,6 +48,7 @@ func NewFile(pathToFile string, memStorage MemoryStore, restore bool, storeInter
 			logger.Log.Errorf("Ошибка при восстановлении метрик из файла, %s", err.Error())
 		}
 	}
+
 	return s
 }
 
@@ -59,7 +60,9 @@ func (fs *File) SetGauge(ctx context.Context, name string, value float64) error 
 	if err := fs.memStorage.SetGauge(ctx, name, value); err != nil {
 		return err
 	}
+
 	fs.SaveNow()
+
 	return nil
 }
 
@@ -67,7 +70,9 @@ func (fs *File) SetCounter(ctx context.Context, name string, value int64) error 
 	if err := fs.memStorage.SetCounter(ctx, name, value); err != nil {
 		return err
 	}
+
 	fs.SaveNow()
+
 	return nil
 }
 
@@ -84,12 +89,14 @@ func (fs *File) Dump(gauges map[string]float64, counters map[string]int64) error
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		err := f.Close()
 		if err != nil {
 			logger.Log.Errorf("ошибка закрытия файла, %s", err.Error())
 		}
 	}()
+
 	di := models.DumpItem{Gauges: gauges, Counters: counters}
 
 	data, err := json.MarshalIndent(di, "", "  ")
@@ -101,6 +108,7 @@ func (fs *File) Dump(gauges map[string]float64, counters map[string]int64) error
 	if err != nil {
 		return fmt.Errorf("ошибка записи в файл, %w", err)
 	}
+
 	return nil
 }
 
@@ -123,9 +131,10 @@ func (fs *File) RestoreNow() (map[string]float64, map[string]int64, error) {
 	if err2 != nil {
 		return nil, nil, err2
 	}
-	logger.Log.Info(di)
-	return di.Gauges, di.Counters, nil
 
+	logger.Log.Info(di)
+
+	return di.Gauges, di.Counters, nil
 }
 
 func (fs *File) SaveNow() {
@@ -139,25 +148,33 @@ func (fs *File) SaveNow() {
 
 func (fs *File) ExtractGauges(ctx context.Context) map[string]float64 {
 	gauges := fs.memStorage.GetGauges(ctx)
+
 	var g = make(map[string]float64, len(gauges))
+
 	for k, v := range gauges {
 		g[k] = *v.GetRawValue()
 	}
+
 	return g
 }
 
 func (fs *File) ExtractCounters(ctx context.Context) map[string]int64 {
 	counters := fs.memStorage.GetCounters(ctx)
+
 	var c = make(map[string]int64, len(counters))
+
 	for k, v := range counters {
 		c[k] = *v.GetRawValue()
 	}
+
 	return c
 }
 
 func (fs *File) Save() error {
 	logger.Log.Info("Начало сохранения метрик в файл ...")
+
 	ctx := context.Background()
+
 	g := fs.ExtractGauges(ctx)
 	c := fs.ExtractCounters(ctx)
 	err := fs.Dump(g, c)
@@ -165,7 +182,9 @@ func (fs *File) Save() error {
 	if err != nil {
 		return err
 	}
+
 	logger.Log.Info("Значения метрик успешно сохранены в файл")
+
 	return nil
 }
 
@@ -181,16 +200,16 @@ func (fs *File) Restore(ctx context.Context) error {
 	return nil
 }
 
-func (fs *File) Ping(ctx context.Context) error {
+func (fs *File) Ping(_ context.Context) error {
 	return errors.New("it's not db. filestorage")
 }
 
-func (fs *File) SaveGaugesBatch(ctx context.Context, gauges map[string]models.Gauge) error {
+func (fs *File) SaveGaugesBatch(_ context.Context, _ map[string]models.Gauge) error {
 	logger.Log.Info("save metrics in FILE GAUGES")
 	return nil
 }
 
-func (fs *File) SaveCountersBatch(ctx context.Context, counters map[string]models.Counter) error {
+func (fs *File) SaveCountersBatch(_ context.Context, _ map[string]models.Counter) error {
 	logger.Log.Info("save metrics in FILE COUNTERS")
 	return nil
 }

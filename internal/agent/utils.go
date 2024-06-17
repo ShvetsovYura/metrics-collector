@@ -17,11 +17,13 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 	if err != nil {
 		return err
 	}
+
 	req.Header.Add("Content-Type", contentType)
 
 	if util.Contains([]string{"application/json", "text/html"}, contentType) {
 		req.Header.Add("Content-Encoding", "gzip")
 		req.Header.Add("Accept-Encoding", "gzip")
+
 		gzw := gzip.NewWriter(&buf)
 
 		_, err := gzw.Write(data)
@@ -35,6 +37,7 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 		}
 	} else {
 		writer := io.Writer(&buf)
+
 		_, err := writer.Write(data)
 		if err != nil {
 			return err
@@ -45,16 +48,20 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 		hash := util.Hash(buf.Bytes(), key)
 		req.Header.Add("HashSHA256", hash)
 	}
+
 	client := http.Client{}
 	resp, err := client.Do(req)
+
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		err := resp.Body.Close()
 		if err != nil {
 			fmt.Printf("error on close response body, %s", err.Error())
 		}
 	}()
+
 	return nil
 }

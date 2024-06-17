@@ -25,6 +25,7 @@ func NewMemory(metricsCount int) *Memory {
 		gaugeMetrics:  make(map[string]models.Gauge, metricsCount),
 		counterMetric: make(map[string]models.Counter, 1),
 	}
+
 	return &m
 }
 
@@ -32,6 +33,7 @@ func (m *Memory) SetGauge(_ context.Context, name string, val float64) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	m.gaugeMetrics[name] = models.Gauge(val)
+
 	return nil
 }
 
@@ -57,6 +59,7 @@ func (m *Memory) SetCounter(_ context.Context, name string, val int64) error {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 	m.counterMetric[name] += models.Counter(val)
+
 	return nil
 }
 
@@ -66,19 +69,20 @@ func (m *Memory) GetGauge(_ context.Context, name string) (models.Gauge, error) 
 
 	if val, ok := m.gaugeMetrics[name]; ok {
 		return val, nil
-	} else {
-		return 0, fmt.Errorf("NotFound %s", name)
 	}
+
+	return 0, fmt.Errorf("NotFound %s", name)
 }
 
 func (m *Memory) GetCounter(_ context.Context, name string) (models.Counter, error) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
+
 	if val, ok := m.counterMetric[name]; ok {
 		return val, nil
-	} else {
-		return 0, fmt.Errorf("NotFound %s", name)
 	}
+
+	return 0, fmt.Errorf("NotFound %s", name)
 }
 
 func (m *Memory) GetGauges(_ context.Context) map[string]models.Gauge {
@@ -94,12 +98,15 @@ func (m *Memory) ToList(_ context.Context) ([]string, error) {
 
 	gaugeKeys := make([]string, 0, len(m.gaugeMetrics))
 	counterKeys := make([]string, 0, len(m.counterMetric))
+
 	for key := range m.gaugeMetrics {
 		gaugeKeys = append(gaugeKeys, key)
 	}
+
 	for key := range m.counterMetric {
 		counterKeys = append(counterKeys, key)
 	}
+
 	sort.Strings(gaugeKeys)
 	sort.Strings(counterKeys)
 
@@ -108,11 +115,13 @@ func (m *Memory) ToList(_ context.Context) ([]string, error) {
 			list = append(list, v.ToString())
 		}
 	}
+
 	for _, k := range counterKeys {
 		if v, ok := m.counterMetric[k]; ok {
 			list = append(list, v.ToString())
 		}
 	}
+
 	return list, nil
 }
 
@@ -120,10 +129,10 @@ func (m *Memory) Ping(_ context.Context) error {
 	return nil
 }
 
-func (m *Memory) SaveGaugesBatch(_ context.Context, gauges map[string]models.Gauge) error {
+func (m *Memory) SaveGaugesBatch(_ context.Context, _ map[string]models.Gauge) error {
 	return nil
 }
-func (m *Memory) SaveCountersBatch(_ context.Context, couters map[string]models.Counter) error {
+func (m *Memory) SaveCountersBatch(_ context.Context, _ map[string]models.Counter) error {
 	return nil
 }
 func (m *Memory) Save() error {

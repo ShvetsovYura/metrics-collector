@@ -9,10 +9,10 @@ require (
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-chi/chi/v5 v5.0.11
 	github.com/go-chi/httplog/v2 v2.0.9
-	github.com/golang/mock v1.6.0
 	github.com/jackc/pgx/v5 v5.5.3
 	github.com/shirou/gopsutil/v3 v3.24.1
 	github.com/stretchr/testify v1.8.4
+	go.uber.org/mock v0.4.0
 	go.uber.org/zap v1.26.0
 )
 
