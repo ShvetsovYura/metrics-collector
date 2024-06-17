@@ -15,7 +15,7 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 
 	req, err := http.NewRequest("POST", link, &buf)
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка создания web запроса для отправки метрик, %w", err)
 	}
 
 	req.Header.Add("Content-Type", contentType)
@@ -40,7 +40,7 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 
 		_, err := writer.Write(data)
 		if err != nil {
-			return err
+			return fmt.Errorf("ошибка записи тела web запроса, %w", err)
 		}
 	}
 
@@ -53,7 +53,7 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 	resp, err := client.Do(req)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка выполнения web запроса, %w", err)
 	}
 
 	defer func() {

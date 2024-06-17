@@ -17,10 +17,12 @@ type Options struct {
 	Key             string `env:"KEY"`               // ключ хеширования сообщения
 }
 
+const defaultStoreInterval = 300
+
 // ParseArgs, парсит значения аргументов в опции сервера сбора метрик.
 func (o *Options) ParseArgs() {
 	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "endpoint address")
-	flag.IntVar(&o.StoreInterval, "i", 300, "interval to store data on file. 0 for immediately")
+	flag.IntVar(&o.StoreInterval, "i", defaultStoreInterval, "interval to store data on file. 0 for immediately")
 	flag.StringVar(&o.FileStoragePath, "f", "/tmp/metrics-db.json", "path to save metrics values")
 	flag.BoolVar(&o.Restore, "r", true, "restoring metrics values on start")
 	flag.StringVar(&o.DBDSN, "d", "", "database connection DSN")

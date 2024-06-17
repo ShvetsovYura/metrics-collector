@@ -1,6 +1,10 @@
 package logger
 
-import "go.uber.org/zap"
+import (
+	"fmt"
+
+	"go.uber.org/zap"
+)
 
 // Log, глобальный логер пирложения.
 var Log *zap.SugaredLogger = zap.NewNop().Sugar()
@@ -9,7 +13,7 @@ var Log *zap.SugaredLogger = zap.NewNop().Sugar()
 func InitLogger(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка получения уровня логирования, %w", err)
 	}
 
 	cfg := zap.NewDevelopmentConfig()
@@ -17,7 +21,7 @@ func InitLogger(level string) error {
 
 	zl, err := cfg.Build()
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка создания логера, %w", err)
 	}
 
 	Log = zl.Sugar()

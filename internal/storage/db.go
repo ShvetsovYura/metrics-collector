@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -19,12 +20,12 @@ func NewDBPool(ctx context.Context, connString string) (*DB, error) {
 	connPool, err := pgxpool.New(ctx, connString)
 	if err != nil {
 		logger.Log.Error(err.Error())
-		return nil, err
+		return nil, fmt.Errorf("ошибка получения соединения из пула, %w", err)
 	}
 
-	createErr := createTables(ctx, connPool)
-	if createErr != nil {
-		return nil, createErr
+	err = createTables(ctx, connPool)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка создания таблиц в БД, %w", err)
 	}
 
 	return &DB{pool: connPool}, nil
@@ -52,7 +53,7 @@ func createTables(ctx context.Context, connectionPool *pgxpool.Pool) error {
 		);
 	`)
 
-	return err
+	return fmt.Errorf("ошибка выполнения запроса, %w", err)
 }
 
 func (db *DB) SetGauge(ctx context.Context, name string, value float64) error {
@@ -63,7 +64,7 @@ func (db *DB) SetGauge(ctx context.Context, name string, value float64) error {
 		`, name, value)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка выполнения запроса, %w", err)
 	}
 
 	logger.Log.Info(tag)
@@ -81,7 +82,7 @@ func (db *DB) SetCounter(ctx context.Context, name string, value int64) error {
 
 	_, err := db.pool.Exec(ctx, stmt, args...)
 
-	return err
+	return fmt.Errorf("ошибка выполнения запроса, %w", err)
 }
 
 func (db *DB) GetCounter(ctx context.Context, metricName string) (models.Counter, error) {
@@ -95,7 +96,7 @@ func (db *DB) GetCounter(ctx context.Context, metricName string) (models.Counter
 
 	err := row.Scan(&name, &value)
 	if err != nil {
-		return models.Counter(0), err
+		return models.Counter(0), fmt.Errorf("ошибка получения данных из БД, %w", err)
 	}
 
 	return models.Counter(value), nil
@@ -112,7 +113,7 @@ func (db *DB) GetGauge(ctx context.Context, metricName string) (models.Gauge, er
 
 	err := row.Scan(&name, &value)
 	if err != nil {
-		return models.Gauge(0), err
+		return models.Gauge(0), fmt.Errorf("ошибка получения данных из БД, %w", err)
 	}
 
 	return models.Gauge(value), nil
@@ -121,12 +122,12 @@ func (db *DB) GetGauge(ctx context.Context, metricName string) (models.Gauge, er
 func (db *DB) GetGauges(ctx context.Context) (map[string]models.Gauge, error) {
 	stmt, _, err := sq.Select("name", "value").From("gauge").ToSql()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ошибка создания запроса к БД, %w", err)
 	}
 
 	rows, err := db.pool.Query(ctx, stmt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ошибка получения данных из БД, %w", err)
 	}
 
 	var gauges = make(map[string]models.Gauge, 100)
@@ -139,7 +140,7 @@ func (db *DB) GetGauges(ctx context.Context) (map[string]models.Gauge, error) {
 
 		err := rows.Scan(&name, &value)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ошибка получения данных из БД, %w", err)
 		}
 
 		gauges[name] = models.Gauge(value)
@@ -205,7 +206,7 @@ func (db *DB) ToList(ctx context.Context) ([]string, error) {
 func (db *DB) Ping(ctx context.Context) error {
 	err := db.pool.Ping(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка опроса БД (ping), %w", err)
 	}
 
 	return nil
@@ -230,13 +231,13 @@ func (db *DB) SaveGaugesBatch(ctx context.Context, gauges map[string]models.Gaug
 	defer func() {
 		err := results.Close()
 		if err != nil {
-			logger.Log.Errorf("не удалось закрыть запрос, %w", err)
+			logger.Log.Errorf("не удалось закрыть запрос, %s", err.Error())
 		}
 	}()
 
 	_, err := results.Exec()
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка выполнения запроса, %s", err.Error())
 	}
 
 	return nil

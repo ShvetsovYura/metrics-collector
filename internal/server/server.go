@@ -85,7 +85,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 				err := s.webserver.Shutdown(ctx)
 				if err != nil {
-					logger.Log.Fatalf("не удалось остановить сервер %w", err)
+					logger.Log.Fatalf("не удалось остановить сервер %s", err.Error())
 				}
 
 				logger.Log.Info("http сервер остановлен!")
@@ -108,7 +108,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}()
 
 	err := s.webserver.ListenAndServe()
-	logger.Log.Fatalf("не удалось запусить web сервер, %w", err)
+	logger.Log.Fatalf("не удалось запусить web сервер, %s", err.Error())
 	wg.Wait()
 
 	return nil

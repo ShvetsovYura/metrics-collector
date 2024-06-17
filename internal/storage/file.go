@@ -117,19 +117,19 @@ func (fs *File) RestoreNow() (map[string]float64, map[string]int64, error) {
 
 	f, err := os.OpenFile(fs.path, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("ошибка открытия файла, %w", err)
 	}
 
-	_, err1 := buf.ReadFrom(f)
-	if err1 != nil {
-		return nil, nil, err1
+	_, err = buf.ReadFrom(f)
+	if err != nil {
+		return nil, nil, fmt.Errorf("ошибка чтения файла, %w", err)
 	}
 
 	di := models.DumpItem{}
 
-	err2 := json.Unmarshal(buf.Bytes(), &di)
-	if err2 != nil {
-		return nil, nil, err2
+	err = json.Unmarshal(buf.Bytes(), &di)
+	if err != nil {
+		return nil, nil, fmt.Errorf("ошибка преборазования из json, %w", err)
 	}
 
 	logger.Log.Info(di)

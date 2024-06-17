@@ -67,6 +67,7 @@ func (a *Agent) runCollectMetrics(ctx context.Context, wg *sync.WaitGroup) {
 		select {
 		case <-ctx.Done():
 			wg.Done()
+
 			return
 		case <-collectTicker.C:
 			processWaiter := &sync.WaitGroup{}
