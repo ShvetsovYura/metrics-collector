@@ -10,6 +10,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
+// CheckRequestHashHeader, мидлваря для проверки хэша сообщения на основании заголовка HashSHA256.
 func CheckRequestHashHeader(key string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -18,18 +19,23 @@ func CheckRequestHashHeader(key string) func(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+
 			hashHeader := r.Header.Get("HashSHA256")
 			if key != "" && hashHeader != "" {
 				hash := util.Hash(body, key)
 				if hashHeader != hash {
 					w.WriteHeader(http.StatusBadRequest)
 					logger.Log.Infof("key %s hashHeader: %s hash: %s", key, hashHeader, hash)
+
 					return
 				}
 			}
+
 			r.Body = io.NopCloser(bytes.NewBuffer(body))
+
 			next.ServeHTTP(w, r)
 		}
+
 		return http.HandlerFunc(fn)
 	}
 }
@@ -42,19 +48,23 @@ type hashWriter struct {
 
 func (hw hashWriter) Write(b []byte) (int, error) {
 	hw.Header().Add("HashSHA256", util.Hash(b, hw.key))
+
 	return hw.w.Write(b)
 }
 func (hw *hashWriter) Close() error {
 	if c, ok := hw.w.(io.WriteCloser); ok {
 		return c.Close()
 	}
+
 	return errors.New("middlewares: io.WriteCloser is unavailable on the writer")
 }
 
+// ResposeHeaderWithHash, мидлваря, которая добавляет хэш от контента в заголовок HashSHA256
 func ResposeHeaderWithHash(key string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			wr := w
+
 			if key != "" {
 				hw := hashWriter{
 					ResponseWriter: w,
@@ -63,9 +73,15 @@ func ResposeHeaderWithHash(key string) func(http.Handler) http.Handler {
 				}
 
 				wr = hw
-				defer hw.Close()
 
+				defer func() {
+					err := hw.Close()
+					if err != nil {
+						logger.Log.Error("Ошибка закрытия HashWriter, %s", err.Error())
+					}
+				}()
 			}
+
 			next.ServeHTTP(wr, r)
 		})
 	}

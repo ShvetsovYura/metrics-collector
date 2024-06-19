@@ -2,9 +2,12 @@ package middlewares
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
 type compressReader struct {
@@ -15,7 +18,7 @@ type compressReader struct {
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ошибка инициализации ридера, %w", err)
 	}
 
 	return &compressReader{
@@ -30,24 +33,34 @@ func (c *compressReader) Read(p []byte) (n int, err error) {
 
 func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
-		return err
+		return fmt.Errorf("ошибка закрытия ридера, %w", err)
 	}
+
 	return c.zr.Close()
 }
 
+// WithUnzipRequest, мидлваря для распаковки принятых сжатых данных.
 func WithUnzipRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// распаковка входящих сжатых данных
 		contentEncoding := r.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
+
 		if sendsGzip {
 			cr, err := newCompressReader(r.Body)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+
 			r.Body = cr
-			defer cr.Close()
+
+			defer func() {
+				err := cr.Close()
+				if err != nil {
+					logger.Log.Errorf("ошибка закрытия reader, %s", err.Error())
+				}
+			}()
 		}
 
 		next.ServeHTTP(w, r)

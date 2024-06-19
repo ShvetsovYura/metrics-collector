@@ -7,15 +7,24 @@ import (
 	"github.com/caarlos0/env"
 )
 
-type AgentOptions struct {
-	EndpointAddr   string `env:"ADDRESS"`
-	ReportInterval int    `env:"REPORT_INTERVAL"`
-	PoolInterval   int    `env:"POLL_INTERVAL"`
-	Key            string `env:"KEY"`
-	RateLimit      int    `env:"RATE_LIMIT"`
+// AgentOptoins хранит информацию настроек запуска
+// и выполнения агента сбора метрик
+type Options struct {
+	// EndpointAddr: адрес отправки метрик
+	EndpointAddr string `env:"ADDRESS"`
+	// ReportInterval: интервал отправки метрик на сервер
+	ReportInterval int `env:"REPORT_INTERVAL"`
+	// PoolInterval: интервал сбора метрик
+	PoolInterval int `env:"POLL_INTERVAL"`
+	// Key: приватный ключ доступа
+	Key string `env:"KEY"`
+	// RateLimit: сколько одновременно можно выполнять отправку метрик на сервер
+	RateLimit int `env:"RATE_LIMIT"`
 }
 
-func (o *AgentOptions) ParseArgs() {
+// ParseArgs  парсит входные аргументы в структуру AgentOptions
+// если не переданы - берутся значения по-умолчнаию
+func (o *Options) ParseArgs() {
 	flag.StringVar(&o.EndpointAddr, "a", "localhost:8080", "server endpoint address")
 	flag.IntVar(&o.PoolInterval, "p", 2, "metrics gather interval")
 	flag.IntVar(&o.ReportInterval, "r", 10, "interval send metrics to server")
@@ -23,9 +32,12 @@ func (o *AgentOptions) ParseArgs() {
 	flag.IntVar(&o.RateLimit, "l", 0, "limit concurent")
 	flag.Parse()
 }
-func (o *AgentOptions) ParseEnvs() error {
+
+// ParseEnvs парсит переменные окружения в структуру AgentOptions
+func (o *Options) ParseEnvs() error {
 	if err := env.Parse(o); err != nil {
 		return errors.New("failed to parse agent env")
 	}
+
 	return nil
 }

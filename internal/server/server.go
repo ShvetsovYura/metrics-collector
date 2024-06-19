@@ -8,46 +8,51 @@ import (
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/db"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/file"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/memory"
+	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 )
 
 type StorageCloser interface {
 	Save() error
 }
 
+// Server, хранит информации о сервере сбора метрик.
 type Server struct {
 	// можно было бы вообще без этого интерфейса
 	// но тогда не понятно - как сохранять метрики в файл в `Run`
 	storage   StorageCloser
 	webserver *http.Server
-	options   *ServerOptions
+	options   *Options
 }
 
-func NewServer(metricsCount int, opt *ServerOptions) *Server {
-	var targetStorage handlers.Storage
-	var saverStorage StorageCloser
+// NewServer, создает новый сервер работы с метриками.
+func NewServer(metricsCount int, opt *Options) *Server {
 	dbCtx := context.Background()
 
+	var (
+		targetStorage handlers.Storage
+		saverStorage  StorageCloser
+	)
+
 	if opt.DBDSN == "" {
+		m := storage.NewMemory(metricsCount)
 		if opt.FileStoragePath == "" {
-			ts := memory.NewMemStorage(metricsCount)
-			saverStorage = ts
-			targetStorage = ts
+			saverStorage = m
+			targetStorage = m
 		} else {
-			ts := file.NewFileStorage(opt.FileStoragePath, metricsCount, opt.Restore, opt.StoreInterval)
-			saverStorage = ts
-			targetStorage = ts
+			f := storage.NewFile(opt.FileStoragePath, m, opt.Restore, opt.StoreInterval)
+			saverStorage = f
+			targetStorage = f
 		}
 	} else {
-		ts, err := db.NewDBPool(dbCtx, opt.DBDSN)
+		d, err := storage.NewDBPool(dbCtx, opt.DBDSN)
 		if err != nil {
 			logger.Log.Fatal("Не удалось подключиться к БД!")
 		}
-		targetStorage = ts
-		saverStorage = ts
+
+		targetStorage = d
+		saverStorage = d
 	}
+
 	return &Server{
 		// из-за того, что удалил методы Save и Restore из интерфейса Storage
 		// приходится костылить такое - дублирование стораджа, но с другим интерфейсом
@@ -60,14 +65,16 @@ func NewServer(metricsCount int, opt *ServerOptions) *Server {
 	}
 }
 
+// Run, запускает сервер.
 func (s *Server) Run(ctx context.Context) error {
-
 	logger.Log.Info("START HTTP SERVER")
+
 	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
 
 	var wg sync.WaitGroup
 
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
 
@@ -75,22 +82,34 @@ func (s *Server) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				logger.Log.Info("Останавливаю http сервер...")
-				s.webserver.Shutdown(ctx)
+
+				err := s.webserver.Shutdown(ctx)
+				if err != nil {
+					logger.Log.Fatalf("не удалось остановить сервер %s", err.Error())
+				}
+
 				logger.Log.Info("http сервер остановлен!")
 				// используется для сохранения метрик в файл
 				// но реализован только для файлового стораджа
 				// в остальных - методы-заглушки
-				err := s.storage.Save()
+				err = s.storage.Save()
 				if err != nil {
 					logger.Log.Error(err)
 				}
+
 				return
 			case <-ticker.C:
-				s.storage.Save()
+				err := s.storage.Save()
+				if err != nil {
+					logger.Log.Errorf("Ошибка сохранения метрик, %s", err.Error())
+				}
 			}
 		}
 	}()
-	s.webserver.ListenAndServe()
+
+	err := s.webserver.ListenAndServe()
+	logger.Log.Fatalf("не удалось запусить web сервер, %s", err.Error())
 	wg.Wait()
+
 	return nil
 }

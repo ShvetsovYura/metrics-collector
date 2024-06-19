@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -11,39 +12,56 @@ import (
 
 func sendMetric(data []byte, link string, contentType string, key string) error {
 	var buf bytes.Buffer
-	var writer io.Writer
+
+	req, err := http.NewRequest("POST", link, &buf)
+	if err != nil {
+		return fmt.Errorf("ошибка создания web запроса для отправки метрик, %w", err)
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
 	if util.Contains([]string{"application/json", "text/html"}, contentType) {
+		req.Header.Add("Content-Encoding", "gzip")
+		req.Header.Add("Accept-Encoding", "gzip")
+
 		gzw := gzip.NewWriter(&buf)
 
 		_, err := gzw.Write(data)
 		if err != nil {
-			return err
+			return fmt.Errorf("ошибка при записи gzip тела при отправке, %w", err)
 		}
 
-		gzw.Close()
-
+		err = gzw.Close()
+		if err != nil {
+			return fmt.Errorf("ошибка при закрытии gzip писателя, %w", err)
+		}
 	} else {
-		writer = io.Writer(&buf)
-		writer.Write(data)
+		writer := io.Writer(&buf)
+
+		_, err := writer.Write(data)
+		if err != nil {
+			return fmt.Errorf("ошибка записи тела web запроса, %w", err)
+		}
 	}
 
-	req, err := http.NewRequest("POST", link, &buf)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Encoding", "gzip")
-	req.Header.Add("Content-Type", contentType)
-	req.Header.Add("Accept-Encoding", "gzip")
 	if key != "" {
 		hash := util.Hash(buf.Bytes(), key)
 		req.Header.Add("HashSHA256", hash)
 	}
+
 	client := http.Client{}
 	resp, err := client.Do(req)
+
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка выполнения web запроса, %w", err)
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			fmt.Printf("error on close response body, %s", err.Error())
+		}
+	}()
+
 	return nil
 }

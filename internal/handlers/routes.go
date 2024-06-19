@@ -3,36 +3,42 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"net/http/pprof"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httplog/v2"
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/middlewares"
-	"github.com/ShvetsovYura/metrics-collector/internal/storage/metric"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/httplog/v2"
+	"github.com/ShvetsovYura/metrics-collector/internal/models"
 )
 
+// StorageReader, интерфейс, определяющий поддержку чтение данных из стораджа.
 type StorageReader interface {
-	GetGauge(ctx context.Context, name string) (metric.Gauge, error)
-	GetCounter(ctx context.Context, name string) (metric.Counter, error)
+	GetGauge(ctx context.Context, name string) (models.Gauge, error)
+	GetCounter(ctx context.Context, name string) (models.Counter, error)
 	Ping(ctx context.Context) error
 	ToList(ctx context.Context) ([]string, error)
 }
+
+// StorageWriter, интерфейс, определяющий поддержку запись данных из сторадж.
 type StorageWriter interface {
 	SetGauge(ctx context.Context, name string, val float64) error
 	SetCounter(ctx context.Context, name string, val int64) error
-	SaveGaugesBatch(context.Context, map[string]metric.Gauge) error
-	SaveCountersBatch(context.Context, map[string]metric.Counter) error
+	SaveGaugesBatch(context.Context, map[string]models.Gauge) error
+	SaveCountersBatch(context.Context, map[string]models.Counter) error
 }
 
+// Storage, интерфейс работы со стораджем.
 type Storage interface {
 	StorageReader
 	StorageWriter
 }
 
+// ServerRouter, функция объявления роутинга http-запросов и их обработчиков.
 func ServerRouter(s Storage, key string) chi.Router {
-
 	logger.NewHTTPLogger()
 
 	r := chi.NewRouter()
@@ -56,6 +62,16 @@ func ServerRouter(s Storage, key string) chi.Router {
 	r.Post("/updates/", MetricBatchUpdateHandler(s))
 	r.Post("/value/", MetricGetValueHandlerWithBody(s))
 	r.Get("/ping", DBPingHandler(s))
+
+	r.Route("/debug/pprof", func(r chi.Router) {
+		r.Get("/", pprof.Index)
+		r.Get("/cmdline", pprof.Handler("cmdline").ServeHTTP)
+		r.Get("/profile", pprof.Handler("profile").ServeHTTP)
+		r.Get("/symbol", pprof.Handler("symbol").ServeHTTP)
+		r.Get("/goroutine", pprof.Handler("goroutine").ServeHTTP)
+		r.Get("/heap", pprof.Handler("heap").ServeHTTP)
+		r.Get("/trace", pprof.Trace)
+	})
 
 	return r
 }

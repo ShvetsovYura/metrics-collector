@@ -9,11 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
+
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
+// Metric: структура метрики для коммуникации (отправки) с другими сервисами
 type Metric struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
@@ -21,6 +23,7 @@ type Metric struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
+// MetricItem: универсальная структура для данных для хранения единицы метрики
 type MetricItem struct {
 	ID    string
 	MType string
@@ -28,49 +31,65 @@ type MetricItem struct {
 	Value float64
 }
 
+// Agent: структура, содержащая собраные метрики
 type Agent struct {
 	mx      sync.RWMutex
 	metrics map[string]MetricItem
-	options *AgentOptions
+	options *Options
 }
 
-func NewAgent(metricsCount int, options *AgentOptions) *Agent {
+// NewAgent: инициализация нового экземляра агента сбора метрик
+func NewAgent(metricsCount int, options *Options) *Agent {
 	return &Agent{
 		metrics: make(map[string]MetricItem, metricsCount),
 		options: options,
 	}
 }
 
+// Run: запуск агента сбора метрик
 func (a *Agent) Run(ctx context.Context) {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
-	go a.collectMetrics(ctx, wg)
-	go a.sendMetrics(ctx, wg)
+
+	go a.runCollectMetrics(ctx, wg)
+	go a.runSendMetrics(ctx, wg)
 
 	wg.Wait()
 	logger.Log.Info("end agent app")
 }
 
-func (a *Agent) collectMetrics(ctx context.Context, wg *sync.WaitGroup) {
+func (a *Agent) runCollectMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	collectTicker := time.NewTicker(time.Duration(a.options.PoolInterval) * time.Second)
+
 	defer collectTicker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			wg.Done()
+
 			return
 		case <-collectTicker.C:
-			metricsCh := a.collectMetricsGenerator(ctx)
-			addMetricsCh := a.collectAdditionalMetricsGenerator(ctx)
+			processWaiter := &sync.WaitGroup{}
+
+			processWaiter.Add(1)
+
+			metricsCh := a.collectMetricsGenerator()
+			addMetricsCh := a.collectAdditionalMetricsGenerator()
 			allMetricsCh := multiplexChannels(ctx, metricsCh, addMetricsCh)
-			go a.processMetrics(allMetricsCh)
+
+			go a.processMetrics(processWaiter, allMetricsCh)
+
+			wg.Wait()
 		}
 	}
 }
 
-func (a *Agent) sendMetrics(ctx context.Context, wg *sync.WaitGroup) {
+func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	var toSend = make(chan MetricItem, 100)
+
 	sendTicker := time.NewTicker(time.Duration(a.options.ReportInterval) * time.Second)
+
 	defer sendTicker.Stop()
 
 	for {
@@ -78,22 +97,27 @@ func (a *Agent) sendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 		case <-ctx.Done():
 			close(toSend)
 			wg.Done()
+
 			return
 		case <-sendTicker.C:
 			logger.Log.Info("start send")
 			a.mx.RLock()
+
 			for _, v := range a.metrics {
 				toSend <- v
 			}
 			a.mx.RUnlock()
+
+			var workers int
+
 			if a.options.RateLimit == 0 {
-				for w := 0; w < len(a.metrics); w++ {
-					go a.senderWorker(toSend)
-				}
+				workers = len(a.metrics)
 			} else {
-				for w := 0; w < a.options.RateLimit; w++ {
-					go a.senderWorker(toSend)
-				}
+				workers = a.options.RateLimit
+			}
+
+			for w := 0; w < workers; w++ {
+				go a.senderWorker(toSend)
 			}
 			logger.Log.Info("end send")
 		}
@@ -102,8 +126,10 @@ func (a *Agent) sendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 
 func (a *Agent) senderWorker(items <-chan MetricItem) {
 	for m := range items {
-		link := "http://" + a.options.EndpointAddr + "/update/"
 		var data []byte
+
+		link := "http://" + a.options.EndpointAddr + "/update/"
+
 		if m.MType == GaugeTypeName {
 			data, _ = json.Marshal(Metric{
 				ID:    m.ID,
@@ -115,6 +141,7 @@ func (a *Agent) senderWorker(items <-chan MetricItem) {
 				Value: &m.Value,
 			})
 		}
+
 		if m.MType == CounterTypeName {
 			data, _ = json.Marshal(Metric{
 				ID:    m.ID,
@@ -123,39 +150,47 @@ func (a *Agent) senderWorker(items <-chan MetricItem) {
 			})
 		}
 
-		sendMetric(data, link, DefaultContentType, a.options.Key)
+		err := sendMetric(data, link, DefaultContentType, a.options.Key)
+		if err != nil {
+			logger.Log.Errorf("Не удалось отправить метрику: %v", data)
+		}
 	}
 }
 
-func (a *Agent) processMetrics(metricsCh <-chan MetricItem) {
+func (a *Agent) processMetrics(wg *sync.WaitGroup, metricsCh <-chan MetricItem) {
+	defer wg.Done()
 	a.mx.Lock()
+
 	for m := range metricsCh {
 		a.metrics[m.ID] = m
 	}
 
-	var newVal int64 = 0
+	var newVal int64
 	if v, ok := a.metrics[CounterFieldName]; ok {
 		newVal = v.Delta + 1
 	}
+
 	a.metrics[CounterFieldName] = MetricItem{
 		ID:    CounterFieldName,
 		MType: CounterTypeName,
 		Delta: newVal,
-		Value: -1,
 	}
 	a.mx.Unlock()
 }
+
 func makeGaugeMetricItem(name string, val float64) MetricItem {
-	return MetricItem{ID: name, MType: GaugeTypeName, Value: val, Delta: -1}
+	return MetricItem{ID: name, MType: GaugeTypeName, Value: val}
 }
 
-func (a *Agent) collectMetricsGenerator(ctx context.Context) chan MetricItem {
+func (a *Agent) collectMetricsGenerator() chan MetricItem {
 	outCh := make(chan MetricItem)
 
 	go func() {
-		var rtm runtime.MemStats
-		runtime.ReadMemStats(&rtm)
 		defer close(outCh)
+
+		var rtm runtime.MemStats
+
+		runtime.ReadMemStats(&rtm)
 		outCh <- makeGaugeMetricItem("HeapSys", float64(rtm.HeapSys))
 		outCh <- makeGaugeMetricItem("Alloc", float64(rtm.Alloc))
 		outCh <- makeGaugeMetricItem("BuckHashSys", float64(rtm.BuckHashSys))
@@ -185,15 +220,16 @@ func (a *Agent) collectMetricsGenerator(ctx context.Context) chan MetricItem {
 		outCh <- makeGaugeMetricItem("TotalAlloc", float64(rtm.TotalAlloc))
 		outCh <- makeGaugeMetricItem("RandomValue", rand.Float64())
 	}()
-	return outCh
 
+	return outCh
 }
 
-func (a *Agent) collectAdditionalMetricsGenerator(ctx context.Context) chan MetricItem {
+func (a *Agent) collectAdditionalMetricsGenerator() chan MetricItem {
 	var outCh = make(chan MetricItem)
 
 	go func() {
 		m, _ := mem.VirtualMemory()
+
 		defer close(outCh)
 		outCh <- makeGaugeMetricItem("TotalMemory", float64(m.Total))
 		outCh <- makeGaugeMetricItem("FreeMemory", float64(m.Free))
@@ -203,6 +239,7 @@ func (a *Agent) collectAdditionalMetricsGenerator(ctx context.Context) chan Metr
 			outCh <- makeGaugeMetricItem("CPUutilization"+strconv.Itoa(i), c)
 		}
 	}()
+
 	return outCh
 }
 
@@ -212,9 +249,12 @@ func multiplexChannels(ctx context.Context, channels ...chan MetricItem) chan Me
 
 	for _, ch := range channels {
 		wg.Add(1)
+
 		chClosure := ch
+
 		go func() {
 			defer wg.Done()
+
 			for item := range chClosure {
 				select {
 				case <-ctx.Done():
@@ -223,11 +263,12 @@ func multiplexChannels(ctx context.Context, channels ...chan MetricItem) chan Me
 				}
 			}
 		}()
-
 	}
+
 	go func() {
 		wg.Wait()
 		close(resultCh)
 	}()
+
 	return resultCh
 }
