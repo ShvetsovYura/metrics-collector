@@ -52,9 +52,9 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, data []
 	require.NoError(t, err)
 
 	defer func() {
-		err := resp.Body.Close()
+		closeErr := resp.Body.Close()
 		if err != nil {
-			fmt.Printf("не удалось закрыть тело ответа, %s", err.Error())
+			fmt.Printf("не удалось закрыть тело ответа, %s", closeErr.Error())
 		}
 	}()
 

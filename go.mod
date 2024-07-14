@@ -9,9 +9,12 @@ require (
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-chi/chi/v5 v5.0.11
 	github.com/go-chi/httplog/v2 v2.0.9
+	github.com/gordonklaus/ineffassign v0.1.0
 	github.com/jackc/pgx/v5 v5.5.3
+	github.com/kisielk/errcheck v1.7.0
 	github.com/shirou/gopsutil/v3 v3.24.1
 	github.com/stretchr/testify v1.8.4
+	github.com/tomarrell/wrapcheck v1.2.0
 	go.uber.org/mock v0.4.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/tools v0.23.0

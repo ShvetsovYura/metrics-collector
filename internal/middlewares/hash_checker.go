@@ -3,6 +3,7 @@ package middlewares
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -49,14 +50,17 @@ type hashWriter struct {
 func (hw hashWriter) Write(b []byte) (int, error) {
 	hw.Header().Add("HashSHA256", util.Hash(b, hw.key))
 
-	return hw.w.Write(b)
+	bytesCount, err := hw.w.Write(b)
+	return bytesCount, fmt.Errorf("%w", err)
 }
 func (hw *hashWriter) Close() error {
 	if c, ok := hw.w.(io.WriteCloser); ok {
-		return c.Close()
+		err := c.Close()
+		return fmt.Errorf("%w", err)
 	}
 
-	return errors.New("middlewares: io.WriteCloser is unavailable on the writer")
+	err := errors.New("middlewares: io.WriteCloser is unavailable on the writer")
+	return fmt.Errorf("%w", err)
 }
 
 // ResposeHeaderWithHash, мидлваря, которая добавляет хэш от контента в заголовок HashSHA256

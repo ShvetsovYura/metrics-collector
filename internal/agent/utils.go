@@ -26,9 +26,9 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 
 		gzw := gzip.NewWriter(&buf)
 
-		_, err := gzw.Write(data)
-		if err != nil {
-			return fmt.Errorf("ошибка при записи gzip тела при отправке, %w", err)
+		_, writeErr := gzw.Write(data)
+		if writeErr != nil {
+			return fmt.Errorf("ошибка при записи gzip тела при отправке, %w", writeErr)
 		}
 
 		err = gzw.Close()
@@ -38,9 +38,9 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 	} else {
 		writer := io.Writer(&buf)
 
-		_, err := writer.Write(data)
-		if err != nil {
-			return fmt.Errorf("ошибка записи тела web запроса, %w", err)
+		_, writeErr := writer.Write(data)
+		if writeErr != nil {
+			return fmt.Errorf("ошибка записи тела web запроса, %w", writeErr)
 		}
 	}
 
