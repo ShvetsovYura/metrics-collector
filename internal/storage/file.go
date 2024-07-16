@@ -54,7 +54,10 @@ func NewFile(pathToFile string, memStorage MemoryStore, restore bool, storeInter
 
 func (fs *File) GetGauge(ctx context.Context, name string) (models.Gauge, error) {
 	val, err := fs.memStorage.GetGauge(ctx, name)
-	return val, fmt.Errorf("%w", err)
+	if err != nil {
+		return 0, fmt.Errorf("%w", err)
+	}
+	return val, nil
 }
 
 func (fs *File) SetGauge(ctx context.Context, name string, value float64) error {
@@ -79,12 +82,18 @@ func (fs *File) SetCounter(ctx context.Context, name string, value int64) error 
 
 func (fs *File) GetCounter(ctx context.Context, name string) (models.Counter, error) {
 	val, err := fs.memStorage.GetCounter(ctx, name)
-	return val, fmt.Errorf("%w", err)
+	if err != nil {
+		return 0, fmt.Errorf("%w", err)
+	}
+	return val, nil
 }
 
 func (fs *File) ToList(ctx context.Context) ([]string, error) {
 	val, err := fs.memStorage.ToList(ctx)
-	return val, fmt.Errorf("%w", err)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+	return val, nil
 }
 
 func (fs *File) Dump(gauges map[string]float64, counters map[string]int64) error {

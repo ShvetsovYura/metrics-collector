@@ -7,11 +7,9 @@ import (
 	"testing"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
-	"go.uber.org/mock/gomock"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/ShvetsovYura/metrics-collector/mocks"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestDump(t *testing.T) {
@@ -160,6 +158,66 @@ func TestFileStorage_ExtractCounters(t *testing.T) {
 			}
 			result := fs.ExtractCounters(tt.args.ctx)
 			assert.Equal(t, tt.want, result)
+		})
+	}
+}
+
+func TestFile_Restore(t *testing.T) {
+	type fields struct {
+		path        string
+		immediately bool
+		memStorage  MemoryStore
+	}
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+		want    map[string]float64
+	}{
+		{
+			name: "basic restore from file",
+			fields: fields{
+				path:        "test.txt",
+				immediately: false,
+				memStorage:  NewMemory(10),
+			},
+			args:    args{ctx: context.Background()},
+			wantErr: false,
+			want: map[string]float64{
+				"gauge1": 94.1234,
+			},
+		},
+	}
+	ctx := context.Background()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fs := &File{
+				path:        tt.fields.path,
+				immediately: tt.fields.immediately,
+				memStorage:  tt.fields.memStorage,
+			}
+			for k, v := range tt.want {
+				fs.memStorage.SetGauge(ctx, k, v)
+			}
+			fs.Save()
+			fsToRestore := &File{
+				path:        tt.fields.path,
+				immediately: tt.fields.immediately,
+				memStorage:  NewMemory(10),
+			}
+			if err := fsToRestore.Restore(tt.args.ctx); (err != nil) != tt.wantErr {
+				t.Errorf("File.Restore() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			for k, v := range tt.want {
+				g, err := fsToRestore.memStorage.GetGauge(ctx, k)
+				assert.NoError(t, err)
+				assert.Equal(t, v, float64(g))
+			}
+
 		})
 	}
 }

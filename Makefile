@@ -12,7 +12,7 @@ b:
 	go test -v --bench . --benchmem
 cov:
 	go clean -testcache
-	go test -v -coverpkg=./...m=all -coverprofile=profile.cov.tmp ./... && go tool cover -func profile.cov
+	go test -v -coverpkg=./... -coverprofile=profile.cov.tmp ./... && go tool cover -func profile.cov
 	cat profile.cov.tmp | grep -v "mock_mem_store.go" > profile.cov
 	go tool cover -func profile.cov
 

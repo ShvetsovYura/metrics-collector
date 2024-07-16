@@ -1,2 +1,5 @@
 sudo metricstest -test.v -test.run=^TestIteration1$ -binary-path=cmd/server/server
 mockgen -destination mocks/mock_mem_store.go -package=mocks github.com/ShvetsovYura/metrics-collector/internal/storage MemoryStore
+
+go build -o agent -ldflags "-X main.buildVersion=0.19.0 -X 'main.buildDate=$(date +'%Y.%m.%d %H:%M:%S')' -X main.buildCommit=52d4b65731eb7c2bc55e4b118db91ca79c49d306" cmd/agent/main.go 
+go build -o server -ldflags "-X main.buildVersion=0 -X 'main.buildDate=$(date +'%Y/%m/%d %H:%M:%S')' -X main.buildCommit" cmd/server/main.go 

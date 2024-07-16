@@ -12,6 +12,10 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/server"
 )
 
+var buildVersion string
+var buildDate string
+var buildCommit string
+
 func main() {
 	err := logger.InitLogger("info")
 	if err != nil {
