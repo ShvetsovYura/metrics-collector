@@ -162,15 +162,8 @@ func Benchmark_multiplexMetrics(b *testing.B) {
 	})
 }
 
-func cmp(a MetricItem) func(string) bool {
-	return func(f string) bool {
-		return a.ID == f
-	}
-}
-
 func TestAgent_collectAdditionalMetricsGenerator(t *testing.T) {
 	type fields struct {
-		mx      sync.RWMutex
 		metrics map[string]MetricItem
 		options *Options
 	}
@@ -182,7 +175,6 @@ func TestAgent_collectAdditionalMetricsGenerator(t *testing.T) {
 		{
 			name: "simple test collect addiditional metrics",
 			fields: fields{
-				mx:      sync.RWMutex{},
 				metrics: make(map[string]MetricItem),
 				options: nil,
 			},
@@ -193,7 +185,7 @@ func TestAgent_collectAdditionalMetricsGenerator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &Agent{
-				mx:      (tt.fields.mx),
+				mx:      sync.RWMutex{},
 				metrics: tt.fields.metrics,
 				options: tt.fields.options,
 			}

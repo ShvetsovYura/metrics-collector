@@ -37,12 +37,21 @@ func main() {
 	a := agent.NewAgent(metricsCount, opts)
 
 	logger.Log.Info("Start agent app")
-	logger.Log.Infof("Build version: %s", buildVersion)
-	logger.Log.Infof("Build date: %s", buildDate)
-	logger.Log.Infof("Build commit: %s", buildCommit)
+	showBuildInfo("Build version: ", buildVersion)
+	showBuildInfo("Build date: ", buildDate)
+	showBuildInfo("Build commit: ", buildCommit)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
 
 	defer stop()
 	a.Run(ctx)
+}
+
+func showBuildInfo(caption string, v string) {
+	if v == "" {
+		logger.Log.Infof("%s: N/A", caption)
+	} else {
+		logger.Log.Infof("%s: %s", caption, v)
+
+	}
 }

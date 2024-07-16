@@ -201,9 +201,11 @@ func TestFile_Restore(t *testing.T) {
 				memStorage:  tt.fields.memStorage,
 			}
 			for k, v := range tt.want {
-				fs.memStorage.SetGauge(ctx, k, v)
+				err := fs.memStorage.SetGauge(ctx, k, v)
+				assert.NoError(t, err)
 			}
-			fs.Save()
+			saverErr := fs.Save()
+			assert.NoError(t, saverErr)
 			fsToRestore := &File{
 				path:        tt.fields.path,
 				immediately: tt.fields.immediately,
