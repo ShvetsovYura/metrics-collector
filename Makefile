@@ -15,8 +15,13 @@ server_ext:
 build_multichecker:
 	go build cmd/staticlint/multichecker.go
 
+checks: vet check
+
 check:
 	./multichecker ./...
+
+vet:
+	go vet ./...
 
 t:
 	go test ./...
