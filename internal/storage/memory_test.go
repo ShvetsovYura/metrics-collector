@@ -254,3 +254,97 @@ func BenchmarkMemoryStorage(b *testing.B) {
 		}
 	})
 }
+
+func TestMemory_SetGauges(t *testing.T) {
+	type args struct {
+		in0    context.Context
+		gauges map[string]float64
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[string]float64
+	}{
+		{
+			name: "Set many gauges metrics",
+			args: args{
+				in0: context.Background(),
+				gauges: map[string]float64{
+					"gauge1": 123.321,
+					"gauge2": 0.123,
+				},
+			},
+			want: map[string]float64{
+				"gauge1": 123.321,
+				"gauge2": 0.123,
+			},
+		},
+		{
+			name: "Set empty gauges metrics",
+			args: args{
+				in0:    context.Background(),
+				gauges: map[string]float64{},
+			},
+			want: map[string]float64{},
+		},
+	}
+	ctx := context.Background()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewMemory(10)
+			m.SetGauges(tt.args.in0, tt.args.gauges)
+			for k, v := range tt.want {
+				g, err := m.GetGauge(ctx, k)
+				assert.NoError(t, err)
+				assert.Equal(t, v, float64(g))
+			}
+		})
+	}
+}
+
+func TestMemory_SetCounters(t *testing.T) {
+	type args struct {
+		in0      context.Context
+		counters map[string]int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[string]int64
+	}{
+		{
+			name: "Set many counters metrics",
+			args: args{
+				in0: context.Background(),
+				counters: map[string]int64{
+					"counter1": 123,
+					"counter2": -123,
+				},
+			},
+			want: map[string]int64{
+				"counter1": 123,
+				"counter2": -123,
+			},
+		},
+		{
+			name: "Set empty counters metrics",
+			args: args{
+				in0:      context.Background(),
+				counters: map[string]int64{},
+			},
+			want: map[string]int64{},
+		},
+	}
+	ctx := context.Background()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewMemory(10)
+			m.SetCounters(tt.args.in0, tt.args.counters)
+			for k, v := range tt.want {
+				c, err := m.GetCounter(ctx, k)
+				assert.NoError(t, err)
+				assert.Equal(t, v, int64(c))
+			}
+		})
+	}
+}

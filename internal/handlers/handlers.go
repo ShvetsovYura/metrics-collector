@@ -123,17 +123,17 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		ctx := r.Context()
 		e := &models.MetricItem{}
 
-		b, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		b, readerErr := io.ReadAll(r.Body)
+		if readerErr != nil {
+			http.Error(w, readerErr.Error(), http.StatusBadRequest)
 
 			return
 		}
 
 		defer func() {
-			err := r.Body.Close()
-			if err != nil {
-				logger.Log.Errorf("Ошибка закрытия тела ответа, %s", err.Error())
+			bodyCloseErr := r.Body.Close()
+			if bodyCloseErr != nil {
+				logger.Log.Errorf("Ошибка закрытия тела ответа, %s", bodyCloseErr.Error())
 			}
 		}()
 		w.Header().Set("Content-Type", "application/json")
@@ -174,9 +174,9 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 			}
 
 		case internal.InCounterName:
-			err := m.SetCounter(ctx, e.ID, *e.Delta)
-			if err != nil {
-				logger.Log.Errorf("Ошибка установки значнеия в метрики, %s", err.Error())
+			setErr := m.SetCounter(ctx, e.ID, *e.Delta)
+			if setErr != nil {
+				logger.Log.Errorf("Ошибка установки значнеия в метрики, %s", setErr.Error())
 			}
 
 			val, _ := m.GetCounter(ctx, e.ID)
@@ -188,19 +188,18 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 
 			marshalVal, marshalErr = json.Marshal(actualVal)
 			if marshalErr != nil {
-				logger.Log.Error(err.Error())
+				logger.Log.Error(marshalErr.Error())
 			}
 		}
 
 		if marshalErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-
 			return
 		}
 
-		_, err = w.Write(marshalVal)
-		if err != nil {
-			logger.Log.Errorf("Ошибка записи ответа, %s", err.Error())
+		_, writeErr := w.Write(marshalVal)
+		if writeErr != nil {
+			logger.Log.Errorf("Ошибка записи ответа, %s", writeErr.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 
 			return
@@ -230,14 +229,14 @@ func MetricGetValueHandlerWithBody(m StorageReader) http.HandlerFunc {
 		}
 
 		defer func() {
-			err := r.Body.Close()
-			if err != nil {
-				logger.Log.Errorf("Ошибка при закрытии тела ответа, %s ", err.Error())
+			closeErr := r.Body.Close()
+			if closeErr != nil {
+				logger.Log.Errorf("Ошибка при закрытии тела ответа, %s ", closeErr.Error())
 			}
 		}()
 
-		if err := json.Unmarshal(buf.Bytes(), &entity); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if unmarshalErr := json.Unmarshal(buf.Bytes(), &entity); unmarshalErr != nil {
+			http.Error(w, unmarshalErr.Error(), http.StatusBadRequest)
 		}
 
 		if !util.Contains([]string{internal.InGaugeName, internal.InCounterName}, entity.MType) {
@@ -246,18 +245,18 @@ func MetricGetValueHandlerWithBody(m StorageReader) http.HandlerFunc {
 		}
 
 		if entity.MType == internal.InGaugeName {
-			v, err := m.GetGauge(ctx, entity.ID)
-			if err != nil {
+			v, getGaugeErr := m.GetGauge(ctx, entity.ID)
+			if getGaugeErr != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 
-			val, err := json.Marshal(models.MetricItem{
+			val, marshalErr := json.Marshal(models.MetricItem{
 				ID:    entity.ID,
 				MType: internal.InGaugeName,
 				Value: v.GetRawValue(),
 			})
-			if err != nil {
+			if marshalErr != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -265,13 +264,13 @@ func MetricGetValueHandlerWithBody(m StorageReader) http.HandlerFunc {
 			answer = val
 		} else if entity.MType == internal.InCounterName {
 			v, _ := m.GetCounter(ctx, entity.ID)
-			val, err := json.Marshal(models.MetricItem{
+			val, marshalErr := json.Marshal(models.MetricItem{
 				ID:    entity.ID,
 				MType: internal.InCounterName,
 				Delta: v.GetRawValue(),
 			})
 
-			if err != nil {
+			if marshalErr != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 
 				return
@@ -343,9 +342,9 @@ func MetricBatchUpdateHandler(m StorageWriter) http.HandlerFunc {
 		}
 
 		defer func() {
-			err := r.Body.Close()
-			if err != nil {
-				logger.Log.Errorf("Ошибка при закрытии тела ответа, %s ", err.Error())
+			closeErr := r.Body.Close()
+			if closeErr != nil {
+				logger.Log.Errorf("Ошибка при закрытии тела ответа, %s ", closeErr.Error())
 			}
 		}()
 

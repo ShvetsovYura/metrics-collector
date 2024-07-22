@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"slices"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -65,15 +67,32 @@ func TestAgent_processMetrics(t *testing.T) {
 	}
 
 	type args struct {
-		metricsCh <-chan MetricItem
+		metricsCh chan MetricItem
 	}
 
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
+		want   map[string]MetricItem
 	}{
-		// TODO: Add test cases.
+		{
+			name: "base proccess metric",
+			fields: fields{
+				metrics: make(map[string]MetricItem, 10),
+				options: nil,
+			},
+			args: args{
+				metricsCh: make(chan MetricItem, 7),
+			},
+			want: map[string]MetricItem{
+				"gauge1":    {ID: "gauge1", MType: "gauge", Delta: 0, Value: 2.34},
+				"gauge0":    {ID: "gauge0", MType: "gauge", Delta: 0, Value: 1.23},
+				"gauge2":    {ID: "gauge2", MType: "gauge", Delta: 0, Value: 3.45},
+				"gauge3":    {ID: "gauge3", MType: "gauge", Delta: 0, Value: 5.67},
+				"PollCount": {ID: "PollCount", MType: "counter", Delta: 0, Value: 0},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -85,8 +104,18 @@ func TestAgent_processMetrics(t *testing.T) {
 			}
 			wg := &sync.WaitGroup{}
 			wg.Add(1)
-			a.processMetrics(wg, tt.args.metricsCh)
+			go a.processMetrics(wg, tt.args.metricsCh)
+			for i, v := range []float64{1.23, 2.34, 3.45, 5.67} {
+				tt.args.metricsCh <- MetricItem{
+					ID:    "gauge" + strconv.Itoa(i),
+					MType: "gauge",
+					Value: v,
+				}
+			}
+			close(tt.args.metricsCh)
 			wg.Wait()
+			assert.Equal(t, 5, len(tt.fields.metrics))
+			assert.EqualValues(t, tt.want, tt.fields.metrics)
 		})
 	}
 }
@@ -131,4 +160,49 @@ func Benchmark_multiplexMetrics(b *testing.B) {
 			wg.Wait()
 		}
 	})
+}
+
+func TestAgent_collectAdditionalMetricsGenerator(t *testing.T) {
+	type fields struct {
+		metrics map[string]MetricItem
+		options *Options
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   []string
+	}{
+		{
+			name: "simple test collect addiditional metrics",
+			fields: fields{
+				metrics: make(map[string]MetricItem),
+				options: nil,
+			},
+			want: []string{"TotalMemory", "FreeMemory"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &Agent{
+				mx:      sync.RWMutex{},
+				metrics: tt.fields.metrics,
+				options: tt.fields.options,
+			}
+			metricsCh := a.collectAdditionalMetricsGenerator()
+
+			var resultMetrics = make([]MetricItem, 0, 10)
+			for v := range metricsCh {
+				resultMetrics = append(resultMetrics, v)
+			}
+			for _, f := range tt.want {
+				isContains := slices.ContainsFunc(resultMetrics, func(m MetricItem) bool {
+					return m.ID == f
+				})
+				assert.True(t, isContains)
+			}
+			assert.LessOrEqual(t, len(tt.want), len(resultMetrics))
+
+		})
+	}
 }

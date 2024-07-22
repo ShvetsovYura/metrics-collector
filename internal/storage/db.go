@@ -152,12 +152,12 @@ func (db *DB) GetGauges(ctx context.Context) (map[string]models.Gauge, error) {
 func (db *DB) GetCounters(ctx context.Context) (map[string]models.Counter, error) {
 	stmt, _, err := sq.Select("name", "value").From("couter").ToSql()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	rows, err := db.pool.Query(ctx, stmt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	var counters = make(map[string]models.Counter, 1)
@@ -170,7 +170,7 @@ func (db *DB) GetCounters(ctx context.Context) (map[string]models.Counter, error
 
 		err := rows.Scan(&name, &value)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		counters[name] = models.Counter(value)
@@ -252,7 +252,7 @@ func (db *DB) SaveCountersBatch(ctx context.Context, counters map[string]models.
 
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 
 	defer func() {
@@ -265,16 +265,17 @@ func (db *DB) SaveCountersBatch(ctx context.Context, counters map[string]models.
 	for k, v := range counters {
 		stmt, args, err := insertStmt.Values(k, *v.GetRawValue()).ToSql()
 		if err != nil {
-			return err
+			return fmt.Errorf("%w", err)
 		}
 
 		_, err = db.pool.Exec(ctx, stmt, args...)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w", err)
 		}
 	}
 
-	return tx.Commit(ctx)
+	commitErr := tx.Commit(ctx)
+	return fmt.Errorf("%w", commitErr)
 }
 
 func (db *DB) Save() error {

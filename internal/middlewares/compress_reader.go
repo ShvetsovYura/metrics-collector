@@ -28,7 +28,8 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 }
 
 func (c *compressReader) Read(p []byte) (n int, err error) {
-	return c.zr.Read(p)
+	num, err := c.zr.Read(p)
+	return num, fmt.Errorf("read error %w", err)
 }
 
 func (c *compressReader) Close() error {
@@ -36,7 +37,7 @@ func (c *compressReader) Close() error {
 		return fmt.Errorf("ошибка закрытия ридера, %w", err)
 	}
 
-	return c.zr.Close()
+	return fmt.Errorf("%w", c.zr.Close())
 }
 
 // WithUnzipRequest, мидлваря для распаковки принятых сжатых данных.

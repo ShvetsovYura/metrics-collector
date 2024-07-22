@@ -53,12 +53,16 @@ func NewFile(pathToFile string, memStorage MemoryStore, restore bool, storeInter
 }
 
 func (fs *File) GetGauge(ctx context.Context, name string) (models.Gauge, error) {
-	return fs.memStorage.GetGauge(ctx, name)
+	val, err := fs.memStorage.GetGauge(ctx, name)
+	if err != nil {
+		return 0, fmt.Errorf("%w", err)
+	}
+	return val, nil
 }
 
 func (fs *File) SetGauge(ctx context.Context, name string, value float64) error {
 	if err := fs.memStorage.SetGauge(ctx, name, value); err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 
 	fs.SaveNow()
@@ -68,7 +72,7 @@ func (fs *File) SetGauge(ctx context.Context, name string, value float64) error 
 
 func (fs *File) SetCounter(ctx context.Context, name string, value int64) error {
 	if err := fs.memStorage.SetCounter(ctx, name, value); err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 
 	fs.SaveNow()
@@ -77,23 +81,31 @@ func (fs *File) SetCounter(ctx context.Context, name string, value int64) error 
 }
 
 func (fs *File) GetCounter(ctx context.Context, name string) (models.Counter, error) {
-	return fs.memStorage.GetCounter(ctx, name)
+	val, err := fs.memStorage.GetCounter(ctx, name)
+	if err != nil {
+		return 0, fmt.Errorf("%w", err)
+	}
+	return val, nil
 }
 
 func (fs *File) ToList(ctx context.Context) ([]string, error) {
-	return fs.memStorage.ToList(ctx)
+	val, err := fs.memStorage.ToList(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+	return val, nil
 }
 
 func (fs *File) Dump(gauges map[string]float64, counters map[string]int64) error {
 	f, err := os.OpenFile(fs.path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 
 	defer func() {
-		err := f.Close()
-		if err != nil {
-			logger.Log.Errorf("ошибка закрытия файла, %s", err.Error())
+		closeErr := f.Close()
+		if closeErr != nil {
+			logger.Log.Errorf("ошибка закрытия файла, %s", closeErr.Error())
 		}
 	}()
 
@@ -101,7 +113,7 @@ func (fs *File) Dump(gauges map[string]float64, counters map[string]int64) error
 
 	data, err := json.MarshalIndent(di, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 
 	_, err = f.Write(data)
