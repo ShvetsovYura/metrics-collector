@@ -12,9 +12,11 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/server"
 )
 
-var buildVersion string
-var buildDate string
-var buildCommit string
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
 
 func main() {
 	err := logger.InitLogger("info")
@@ -34,6 +36,9 @@ func main() {
 	srv := server.NewServer(40, opts)
 
 	logger.Log.Infof("Start server with options: %v", *opts)
+	showBuildInfo("Build version: ", buildVersion)
+	showBuildInfo("Build date: ", buildDate)
+	showBuildInfo("Build commit: ", buildCommit)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
 
@@ -41,5 +46,14 @@ func main() {
 
 	if err := srv.Run(ctx); err != nil {
 		panic(err)
+	}
+}
+
+func showBuildInfo(caption string, v string) {
+	if v == "" {
+		logger.Log.Infof("%s: N/A", caption)
+	} else {
+		logger.Log.Infof("%s: %s", caption, v)
+
 	}
 }
