@@ -38,11 +38,13 @@ type Storage interface {
 }
 
 // ServerRouter, функция объявления роутинга http-запросов и их обработчиков.
-func ServerRouter(s Storage, key string) chi.Router {
+func ServerRouter(s Storage, key string, privateKeyPath string) chi.Router {
 	logger.NewHTTPLogger()
 
 	r := chi.NewRouter()
-
+	// if privateKeyPath != "" {
+	// 	r.Use(middlewares.DecryptMessage(privateKeyPath))
+	// }
 	r.Use(middlewares.CheckRequestHashHeader(key))
 
 	r.Use(middleware.Compress(5, "application/json", "text/html"))

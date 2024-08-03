@@ -13,7 +13,6 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
 // Metric: структура метрики для коммуникации (отправки) с другими сервисами
@@ -151,24 +150,13 @@ func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
 			})
 		}
 
-		if a.options.CryptoKey != "" {
-			encryptedData, err := util.EncryptData(data, a.options.CryptoKey)
-			if err != nil {
-				logger.Log.Error(err)
-				return
-			}
-			errSend := sendMetric(encryptedData, link, DefaultContentType, a.options.Key)
-			if errSend != nil {
-				logger.Log.Errorf("Не удалось отправить метрику: %v", data)
-			}
-		} else {
-			err := sendMetric(data, link, DefaultContentType, a.options.Key)
-			if err != nil {
-				logger.Log.Errorf("Не удалось отправить метрику: %v", data)
-			}
+		err := sendMetric(data, link, DefaultContentType, a.options.Key, a.options.CryptoKey)
+		// err := sendMetric(data, link, "application/ugu", a.options.Key, a.options.CryptoKey)
+		if err != nil {
+			logger.Log.Errorf("Не удалось отправить метрику: %v", data)
 		}
-
 	}
+
 }
 
 func (a *Agent) processMetrics(wg *sync.WaitGroup, metricsCh <-chan MetricItem) {

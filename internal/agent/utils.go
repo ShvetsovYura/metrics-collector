@@ -7,12 +7,23 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
-func sendMetric(data []byte, link string, contentType string, key string) error {
+func sendMetric(data []byte, link string, contentType string, key string, publicKeyPath string) error {
+	var data_ []byte
 	var buf bytes.Buffer
-
+	if publicKeyPath != "" {
+		data_ = data
+		// var err error
+		// data_, err = util.EncryptData([]byte("ping"), publicKeyPath)
+		// if err != nil {
+		// 	return fmt.Errorf("%w", err)
+		// }
+	} else {
+		data_ = data
+	}
 	req, err := http.NewRequest("POST", link, &buf)
 	if err != nil {
 		return fmt.Errorf("ошибка создания web запроса для отправки метрик, %w", err)
@@ -26,7 +37,7 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 
 		gzw := gzip.NewWriter(&buf)
 
-		_, writeErr := gzw.Write(data)
+		_, writeErr := gzw.Write(data_)
 		if writeErr != nil {
 			return fmt.Errorf("ошибка при записи gzip тела при отправке, %w", writeErr)
 		}
@@ -38,7 +49,7 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 	} else {
 		writer := io.Writer(&buf)
 
-		_, writeErr := writer.Write(data)
+		_, writeErr := writer.Write(data_)
 		if writeErr != nil {
 			return fmt.Errorf("ошибка записи тела web запроса, %w", writeErr)
 		}
@@ -55,6 +66,7 @@ func sendMetric(data []byte, link string, contentType string, key string) error 
 	if err != nil {
 		return fmt.Errorf("ошибка выполнения web запроса, %w", err)
 	}
+	logger.Log.Infof("success request to [POST] %s", link)
 
 	defer func() {
 		err := resp.Body.Close()

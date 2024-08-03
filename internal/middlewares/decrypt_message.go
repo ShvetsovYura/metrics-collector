@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
-	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
 type decryptReader struct {
@@ -26,11 +25,11 @@ func newDecryptReader(r io.ReadCloser, privateKeyPath string) *decryptReader {
 }
 
 func (dr *decryptReader) Read(p []byte) (n int, err error) {
-	decrytedMessage, err := util.DecryptData(p, dr.privateKeyPath)
-	if err != nil {
-		return 0, fmt.Errorf("error on decrypt message %e", err)
-	}
-	return dr.reader.Read(decrytedMessage)
+	// decrytedMessage, err := util.DecryptData(p, dr.privateKeyPath)
+	// if err != nil {
+	// 	return 0, fmt.Errorf("error on decrypt message %e", err)
+	// }
+	return dr.reader.Read(p)
 }
 func (dr *decryptReader) Close() error {
 	if err := dr.req.Close(); err != nil {

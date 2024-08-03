@@ -1,0 +1,3 @@
+CRYPTO_KEY=/Users/21184534/private.pem
+ADDRESS=localhost:8088
+FILE_STORAGE_PATH=

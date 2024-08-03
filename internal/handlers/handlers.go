@@ -185,6 +185,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 				MType: internal.InCounterName,
 				Delta: val.GetRawValue(),
 			}
+			logger.Log.Infof("metric actual value %v", actualVal)
 
 			marshalVal, marshalErr = json.Marshal(actualVal)
 			if marshalErr != nil {
@@ -204,7 +205,6 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 
 			return
 		}
-
 		w.WriteHeader(http.StatusOK)
 	}
 }

@@ -59,7 +59,7 @@ func NewServer(metricsCount int, opt *Options) *Server {
 		storage: saverStorage,
 		webserver: &http.Server{
 			Addr:    opt.EndpointAddr,
-			Handler: handlers.ServerRouter(targetStorage, opt.Key),
+			Handler: handlers.ServerRouter(targetStorage, opt.Key, opt.CryptoKey),
 		},
 		options: opt,
 	}
