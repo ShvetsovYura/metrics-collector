@@ -33,16 +33,18 @@ type MetricItem struct {
 
 // Agent: структура, содержащая собраные метрики
 type Agent struct {
-	mx      sync.RWMutex
-	metrics map[string]MetricItem
-	options *Options
+	mx         sync.RWMutex
+	metrics    map[string]MetricItem
+	options    *Options
+	httpClient *SendMetricClient
 }
 
 // NewAgent: инициализация нового экземляра агента сбора метрик
 func NewAgent(metricsCount int, options *Options) *Agent {
 	return &Agent{
-		metrics: make(map[string]MetricItem, metricsCount),
-		options: options,
+		metrics:    make(map[string]MetricItem, metricsCount),
+		options:    options,
+		httpClient: NewSendMetricClient("http://"+options.EndpointAddr+"/update/", DefaultContentType, options.Key, options.CryptoKey),
 	}
 }
 
@@ -128,8 +130,6 @@ func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
 	for m := range metricsCh {
 		var data []byte
 
-		link := "http://" + a.options.EndpointAddr + "/update/"
-
 		if m.MType == GaugeTypeName {
 			data, _ = json.Marshal(Metric{
 				ID:    m.ID,
@@ -149,12 +149,12 @@ func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
 				Delta: &m.Delta,
 			})
 		}
-
-		err := sendMetric(data, link, DefaultContentType, a.options.Key, a.options.CryptoKey)
-		// err := sendMetric(data, link, "application/ugu", a.options.Key, a.options.CryptoKey)
+		a.mx.Lock()
+		err := a.httpClient.SendMetric(data)
 		if err != nil {
 			logger.Log.Errorf("Не удалось отправить метрику: %v", data)
 		}
+		a.mx.Unlock()
 	}
 
 }

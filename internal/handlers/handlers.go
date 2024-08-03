@@ -123,12 +123,12 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		ctx := r.Context()
 		e := &models.MetricItem{}
 
-		b, readerErr := io.ReadAll(r.Body)
-		if readerErr != nil {
-			http.Error(w, readerErr.Error(), http.StatusBadRequest)
+		b, _ := io.ReadAll(r.Body)
+		// if readerErr != nil {
+		// 	http.Error(w, readerErr.Error(), http.StatusBadRequest)
 
-			return
-		}
+		// 	return
+		// }
 
 		defer func() {
 			bodyCloseErr := r.Body.Close()
