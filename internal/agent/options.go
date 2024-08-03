@@ -20,6 +20,8 @@ type Options struct {
 	Key string `env:"KEY"`
 	// RateLimit: сколько одновременно можно выполнять отправку метрик на сервер
 	RateLimit int `env:"RATE_LIMIT"`
+	// CryptoKey: путь до файла с публичным ключом
+	CryptoKey string `env:"CRYPTO_KEY"`
 }
 
 // ParseArgs  парсит входные аргументы в структуру AgentOptions
@@ -30,6 +32,7 @@ func (o *Options) ParseArgs() {
 	flag.IntVar(&o.ReportInterval, "r", 10, "interval send metrics to server")
 	flag.StringVar(&o.Key, "k", "", "Secret key")
 	flag.IntVar(&o.RateLimit, "l", 0, "limit concurent")
+	flag.StringVar(&o.CryptoKey, "crypto-key", "", "path to public key")
 	flag.Parse()
 }
 

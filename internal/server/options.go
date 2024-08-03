@@ -15,6 +15,7 @@ type Options struct {
 	Restore         bool   `env:"RESTORE"`           // восстанавливать метрики при старте приложения
 	DBDSN           string `env:"DATABASE_DSN"`      // строка подключения к БД
 	Key             string `env:"KEY"`               // ключ хеширования сообщения
+	CryptoKey       string `env:"CRYPTO_KEY"`        // путь до файла с приватным ключом
 }
 
 const defaultStoreInterval = 300
@@ -27,6 +28,7 @@ func (o *Options) ParseArgs() {
 	flag.BoolVar(&o.Restore, "r", true, "restoring metrics values on start")
 	flag.StringVar(&o.DBDSN, "d", "", "database connection DSN")
 	flag.StringVar(&o.Key, "k", "", "Secret key value")
+	flag.StringVar(&o.CryptoKey, "crypto-key", "", "path to private key")
 
 	flag.Parse()
 }
