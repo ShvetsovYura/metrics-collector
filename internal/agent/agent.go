@@ -124,8 +124,8 @@ func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (a *Agent) senderWorker(items <-chan MetricItem) {
-	for m := range items {
+func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
+	for m := range metricsCh {
 		var data []byte
 
 		link := "http://" + a.options.EndpointAddr + "/update/"
@@ -158,24 +158,33 @@ func (a *Agent) senderWorker(items <-chan MetricItem) {
 }
 
 func (a *Agent) processMetrics(wg *sync.WaitGroup, metricsCh <-chan MetricItem) {
-	defer wg.Done()
+	defer func() {
+		a.mx.Unlock()
+		wg.Done()
+	}()
+
 	a.mx.Lock()
 
 	for m := range metricsCh {
 		a.metrics[m.ID] = m
 	}
 
+	// TODO: Не нравится нижеследующий блок, подумать над изменением
+	// дефолтное значение типа = 0
 	var newVal int64
+	// если такая метрика counter с этим именем уже есть в коллекции
+	// то увеличиваем кол-во
 	if v, ok := a.metrics[CounterFieldName]; ok {
 		newVal = v.Delta + 1
 	}
-
+	// передаем 0 для новой counter-матрики или
+	// записываем увеличенное значение для сущестующей
 	a.metrics[CounterFieldName] = MetricItem{
 		ID:    CounterFieldName,
 		MType: CounterTypeName,
 		Delta: newVal,
 	}
-	a.mx.Unlock()
+
 }
 
 func makeGaugeMetricItem(name string, val float64) MetricItem {

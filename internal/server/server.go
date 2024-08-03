@@ -32,7 +32,7 @@ func NewServer(metricsCount int, opt *Options) *Server {
 		targetStorage handlers.Storage
 		saverStorage  StorageCloser
 	)
-
+	// TODO: Подумать над упрощением
 	if opt.DBDSN == "" {
 		m := storage.NewMemory(metricsCount)
 		if opt.FileStoragePath == "" {
