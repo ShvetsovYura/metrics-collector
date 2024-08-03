@@ -1,6 +1,8 @@
 package util
 
 import (
+	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,4 +55,20 @@ func TestHash(t *testing.T) {
 			assert.Equal(t, c.outHash, result)
 		})
 	}
+}
+
+func TestEncryptData(t *testing.T) {
+	testMessage := []byte("this test message")
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	basePath := path.Join(cwd, "..", "..", "testdata")
+	publicKeyPath := path.Join(basePath, "public.pem")
+	privateKeyPath := path.Join(basePath, "private.pem")
+
+	encryptedMessage, err := EncryptData(testMessage, publicKeyPath)
+
+	assert.NoError(t, err)
+	decryptedMessage, err := DecryptData(encryptedMessage, privateKeyPath)
+	assert.NoError(t, err)
+	assert.Equal(t, testMessage, decryptedMessage)
 }

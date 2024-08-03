@@ -15,11 +15,11 @@ func EncryptData(msg []byte, pubKeyPath string) ([]byte, error) {
 		return nil, fmt.Errorf("error on read public key file %e", err)
 	}
 	publicKeyBlock, _ := pem.Decode(publicKeyBytes)
-	publicKey, err := x509.ParsePKCS1PublicKey(publicKeyBlock.Bytes)
+	publicKey, err := x509.ParsePKIXPublicKey(publicKeyBlock.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("error on parsed public key %e", err)
 	}
-	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, msg)
+	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey.(*rsa.PublicKey), msg)
 	if err != nil {
 		return nil, fmt.Errorf("error on encrypt message %e", err)
 	}
