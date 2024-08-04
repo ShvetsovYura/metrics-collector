@@ -12,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/agent/sender"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
@@ -33,18 +34,20 @@ type MetricItem struct {
 
 // Agent: структура, содержащая собраные метрики
 type Agent struct {
-	mx         sync.RWMutex
-	metrics    map[string]MetricItem
-	options    *Options
-	httpClient *SendMetricClient
+	mx      sync.RWMutex
+	metrics map[string]MetricItem
+	options *Options
+	sender  *sender.MetricSender
 }
 
 // NewAgent: инициализация нового экземляра агента сбора метрик
 func NewAgent(metricsCount int, options *Options) *Agent {
 	return &Agent{
-		metrics:    make(map[string]MetricItem, metricsCount),
-		options:    options,
-		httpClient: NewSendMetricClient("http://"+options.EndpointAddr+"/update/", DefaultContentType, options.Key, options.CryptoKey),
+		metrics: make(map[string]MetricItem, metricsCount),
+		options: options,
+		sender: sender.NewMetricSender(
+			"http://"+options.EndpointAddr+"/update/", DefaultContentType, options.Key, options.CryptoKey,
+		),
 	}
 }
 
@@ -150,7 +153,7 @@ func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
 			})
 		}
 		a.mx.Lock()
-		err := a.httpClient.SendMetric(data)
+		err := a.sender.Send(data)
 		if err != nil {
 			logger.Log.Errorf("Не удалось отправить метрику: %v", data)
 		}

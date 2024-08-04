@@ -123,12 +123,12 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 		ctx := r.Context()
 		e := &models.MetricItem{}
 
-		b, _ := io.ReadAll(r.Body)
-		// if readerErr != nil {
-		// 	http.Error(w, readerErr.Error(), http.StatusBadRequest)
+		b, readerErr := io.ReadAll(r.Body)
+		if readerErr != nil {
+			http.Error(w, readerErr.Error(), http.StatusBadRequest)
 
-		// 	return
-		// }
+			return
+		}
 
 		defer func() {
 			bodyCloseErr := r.Body.Close()
@@ -136,6 +136,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 				logger.Log.Errorf("Ошибка закрытия тела ответа, %s", bodyCloseErr.Error())
 			}
 		}()
+		logger.Log.Infof("incoming value: %v", string(b))
 		w.Header().Set("Content-Type", "application/json")
 
 		if err := json.Unmarshal(b, &e); err != nil {

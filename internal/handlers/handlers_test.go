@@ -67,7 +67,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, data []
 func TestMetricSetGaugeHandler(t *testing.T) {
 	mem := storage.NewMemory(40)
 	fs := storage.NewFile("tt.txt", mem, false, 0)
-	router := ServerRouter(fs, "")
+	router := ServerRouter(fs, "", "")
 	ts := httptest.NewServer(router)
 
 	defer ts.Close()
@@ -157,7 +157,7 @@ type wantCounter struct {
 
 func TestMetricSetCounterHandler(t *testing.T) {
 	m := storage.NewMemory(40)
-	router := ServerRouter(m, "")
+	router := ServerRouter(m, "", "")
 	ts := httptest.NewServer(router)
 
 	defer ts.Close()
@@ -239,7 +239,7 @@ func TestMetricGetValueHandler(t *testing.T) {
 		t.Fatalf("не удалось установить метрику, %s", err.Error())
 	}
 
-	router := ServerRouter(m, "")
+	router := ServerRouter(m, "", "")
 	ts := httptest.NewServer(router)
 
 	defer ts.Close()
@@ -288,7 +288,7 @@ func TestMetricGetAllValueHandler1(t *testing.T) {
 		t.Fatalf("не удалось установить метрику, %s", err.Error())
 	}
 
-	router := ServerRouter(m, "")
+	router := ServerRouter(m, "", "")
 	ts := httptest.NewServer(router)
 
 	defer ts.Close()
@@ -322,7 +322,7 @@ func TestMetricUpdateHandler(t *testing.T) {
 	fsPath := "/tmp/myFileStorage.txt"
 	fs := storage.NewFile(fsPath, mem, true, 0)
 
-	router := ServerRouter(fs, "")
+	router := ServerRouter(fs, "", "")
 	ts := httptest.NewServer(router)
 
 	defer func() {
@@ -420,7 +420,7 @@ func TestMetricValueHandler(t *testing.T) {
 		t.Fatalf("не удалось установить метрику, %s", err.Error())
 	}
 
-	router := ServerRouter(fs, "")
+	router := ServerRouter(fs, "", "")
 	ts := httptest.NewServer(router)
 
 	defer func() {
@@ -512,7 +512,7 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 		t.Fatalf("не удалось установить метрику, %s", err.Error())
 	}
 
-	router := ServerRouter(fs, "")
+	router := ServerRouter(fs, "", "")
 	ts := httptest.NewServer(router)
 
 	defer func() {
@@ -552,7 +552,7 @@ func TestMetricGetAllValueHandler(t *testing.T) {
 
 func TestMetricBatchUpdateHandler(t *testing.T) {
 	mem := storage.NewMemory(40)
-	router := ServerRouter(mem, "")
+	router := ServerRouter(mem, "", "")
 	ts := httptest.NewServer(router)
 
 	defer func() {

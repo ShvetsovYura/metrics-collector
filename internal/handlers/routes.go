@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http/pprof"
 
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httplog/v2"
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
@@ -40,15 +42,16 @@ func ServerRouter(s Storage, key string, privateKeyPath string) chi.Router {
 	logger.NewHTTPLogger()
 
 	r := chi.NewRouter()
-	// if privateKeyPath != "" {
-	// 	r.Use(middlewares.DecryptMessage(privateKeyPath))
-	// }
-	// r.Use(middlewares.CheckRequestHashHeader(key))
 
-	// r.Use(middleware.Compress(5, "application/json", "text/html"))
-	// r.Use(httplog.RequestLogger(logger.HTTPLogger))
+	r.Use(middlewares.CheckRequestHashHeader(key))
+
+	r.Use(middleware.Compress(5, "application/json", "text/html"))
+	r.Use(httplog.RequestLogger(logger.HTTPLogger))
 	r.Use(middlewares.WithUnzipRequest)
-	// r.Use(middlewares.ResposeHeaderWithHash(key))
+	if privateKeyPath != "" {
+		r.Use(middlewares.DecryptMessage(privateKeyPath))
+	}
+	r.Use(middlewares.ResposeHeaderWithHash(key))
 
 	r.Get("/", MetricGetCurrentValuesHandler(s))
 
