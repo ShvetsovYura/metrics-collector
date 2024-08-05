@@ -21,12 +21,12 @@ var (
 const metricsCount int = 40
 
 func main() {
-	err := logger.InitLogger("info")
+
+	opts := agent.ReadOptions()
+	err := logger.InitLogger(opts.LogLevel)
 	if err != nil {
 		fmt.Println("Не удалось инициализировать лог")
 	}
-
-	opts := agent.ReadOptions()
 
 	a := agent.NewAgent(metricsCount, opts)
 

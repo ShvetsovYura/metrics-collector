@@ -69,7 +69,7 @@ func NewServer(metricsCount int, opt *Options) *Server {
 func (s *Server) Run(ctx context.Context) error {
 	logger.Log.Info("START HTTP SERVER")
 
-	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
+	ticker := time.NewTicker(s.options.StoreInterval)
 
 	var wg sync.WaitGroup
 

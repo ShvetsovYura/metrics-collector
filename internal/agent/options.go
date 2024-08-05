@@ -18,6 +18,7 @@ const (
 	EndpointAddrDef   = "localhost:8080"
 	ReportIntervalDef = time.Duration(2 * time.Second)
 	PollIntervalDef   = time.Duration(2 * time.Second)
+	LogLevelDef       = "info"
 )
 
 // AgentOptoins хранит информацию настроек запуска
@@ -29,16 +30,47 @@ type Options struct {
 	Key            string        `env:"KEY"`                                    // Key: приватный ключ доступа
 	RateLimit      int           `env:"RATE_LIMIT"`                             // RateLimit: сколько одновременно можно выполнять отправку метрик на сервер
 	CryptoKey      string        `env:"CRYPTO_KEY" json:"crypto_key"`           // CryptoKey: путь до файла с публичным ключом
+	LogLevel       string        `json:"log_level"`
 }
 
 func ReadOptions() *Options {
 	opt := &Options{}
+	// чтение аругментов
 	opt.parseArgs()
+	// чтение переменных окружения и перезапись пустых значений
 	opt.parseEnvs()
+	// чтение конфига и перезапись пустых значений
 	opt.parseConfig()
+	// применение дефолтных значений в оставшиеся пустые пераметры
 	opt.applyDefaultParams()
 	return opt
 }
+
+func (o *Options) UnmarshalJSON(data []byte) error {
+	type OptionsAlias Options
+
+	optionsValue := &struct {
+		*OptionsAlias
+		ReportInterval string `json:"report_interval"`
+		PollInterval   string `json:"poll_interval"`
+	}{
+		OptionsAlias: (*OptionsAlias)(o),
+	}
+	if err := json.Unmarshal(data, optionsValue); err != nil {
+		return fmt.Errorf("ошибка парсинга конфигурации %w", err)
+	}
+	var err error
+	o.ReportInterval, err = time.ParseDuration(optionsValue.ReportInterval)
+	if err != nil {
+		return fmt.Errorf("ошибка преобразования поля ReportInterval %w", err)
+	}
+	o.PollInterval, err = time.ParseDuration(optionsValue.PollInterval)
+	if err != nil {
+		return fmt.Errorf("ошибка преобразования поля PollInterval %w", err)
+	}
+	return nil
+}
+
 func (o *Options) parseConfig() {
 	var configPath string
 	pflag.StringVarP(&configPath, "config", "c", "", "path to config file")
@@ -66,12 +98,16 @@ func (o *Options) applyDefaultParams() {
 	if o.ReportInterval == 0 {
 		o.ReportInterval = ReportIntervalDef
 	}
-
+	if o.LogLevel == "" {
+		o.LogLevel = LogLevelDef
+	}
 }
 
 // ParseArgs  парсит входные аргументы в структуру AgentOptions
 // если не переданы - берутся значения по-умолчнаию
 func (o *Options) parseArgs() {
+	// устанавливаем дефолтные значения аргументов в null-значения
+	// нужно для дальнейшего переопределения значений
 	flag.StringVar(&o.EndpointAddr, "a", "", "server endpoint address")
 	flag.DurationVar(&o.PollInterval, "p", 0, "metrics gather interval")
 	flag.DurationVar(&o.ReportInterval, "r", 0, "interval send metrics to server")
@@ -85,14 +121,11 @@ func (o *Options) parseArgs() {
 
 // ParseEnvs парсит переменные окружения в структуру AgentOptions
 func (o *Options) parseEnvs() error {
-
 	opt := &Options{}
 	if err := env.Parse(opt); err != nil {
 		return errors.New("failed to parse agent env")
 	}
-
-	setParams(o, opt)
-
+	reassignOptions(o, opt)
 	return nil
 }
 
@@ -110,35 +143,13 @@ func (o *Options) applyConfig(path string) {
 		opt := &Options{}
 		json.Unmarshal(data, opt)
 		// решение в лоб
-		setParams(o, opt)
+		reassignOptions(o, opt)
 	}
 }
-func (o *Options) UnmarshalJSON(data []byte) error {
-	type OptionsAlias Options
 
-	optionsValue := &struct {
-		*OptionsAlias
-		ReportInterval string `json:"report_interval"`
-		PollInterval   string `json:"poll_interval"`
-	}{
-		OptionsAlias: (*OptionsAlias)(o),
-	}
-	if err := json.Unmarshal(data, optionsValue); err != nil {
-		return fmt.Errorf("ошибка парсинга конфигурации %w", err)
-	}
-	var err error
-	o.ReportInterval, err = time.ParseDuration(optionsValue.ReportInterval)
-	if err != nil {
-		return fmt.Errorf("ошибка преобразования поля ReportInterval %w", err)
-	}
-	o.PollInterval, err = time.ParseDuration(optionsValue.PollInterval)
-	if err != nil {
-		return fmt.Errorf("ошибка преобразования поля PollInterval %w", err)
-	}
-	return nil
-}
-
-func setParams(curOpt *Options, tempOpt *Options) {
+// reassignOptions переопределяет значения опции
+func reassignOptions(curOpt *Options, tempOpt *Options) {
+	// установка только если значение параметров пустое, а целевое - нет
 	if curOpt.EndpointAddr == "" && tempOpt.EndpointAddr != "" {
 		curOpt.EndpointAddr = tempOpt.EndpointAddr
 	}
@@ -156,5 +167,8 @@ func setParams(curOpt *Options, tempOpt *Options) {
 	}
 	if curOpt.CryptoKey == "" && tempOpt.CryptoKey != "" {
 		curOpt.CryptoKey = tempOpt.CryptoKey
+	}
+	if curOpt.LogLevel == "" && tempOpt.LogLevel != "" {
+		curOpt.LogLevel = tempOpt.LogLevel
 	}
 }

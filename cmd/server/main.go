@@ -19,18 +19,12 @@ var (
 )
 
 func main() {
-	err := logger.InitLogger("info")
+
+	opts := server.ReadOptions()
+	err := logger.InitLogger(opts.LogLevel)
 	if err != nil {
-		fmt.Println("Не удалось инициализировать лог")
+		fmt.Printf("Не удалось инициализировать лог, %s \n", err.Error())
 	}
-
-	opts := new(server.Options)
-	opts.ParseArgs()
-
-	if err := opts.ParseEnvs(); err != nil {
-		logger.Log.Fatal(err.Error())
-	}
-
 	logger.Log.Info(*opts)
 
 	srv := server.NewServer(40, opts)
