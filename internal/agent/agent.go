@@ -64,7 +64,7 @@ func (a *Agent) Run(ctx context.Context) {
 }
 
 func (a *Agent) runCollectMetrics(ctx context.Context, wg *sync.WaitGroup) {
-	collectTicker := time.NewTicker(time.Duration(a.options.PoolInterval) * time.Second)
+	collectTicker := time.NewTicker(a.options.PollInterval)
 
 	defer collectTicker.Stop()
 
@@ -93,7 +93,7 @@ func (a *Agent) runCollectMetrics(ctx context.Context, wg *sync.WaitGroup) {
 func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	var toSend = make(chan MetricItem, 100)
 
-	sendTicker := time.NewTicker(time.Duration(a.options.ReportInterval) * time.Second)
+	sendTicker := time.NewTicker(a.options.ReportInterval)
 
 	defer sendTicker.Stop()
 

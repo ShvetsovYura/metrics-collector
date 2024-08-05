@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os/signal"
 	"syscall"
 
@@ -27,16 +26,11 @@ func main() {
 		fmt.Println("Не удалось инициализировать лог")
 	}
 
-	opts := new(agent.Options)
-	opts.ParseArgs()
-
-	if err := opts.ParseEnvs(); err != nil {
-		log.Fatal(err.Error())
-	}
+	opts := agent.ReadOptions()
 
 	a := agent.NewAgent(metricsCount, opts)
 
-	logger.Log.Info("Start agent app")
+	logger.Log.Info("Start AGENT app")
 	showBuildInfo("Build version: ", buildVersion)
 	showBuildInfo("Build date: ", buildDate)
 	showBuildInfo("Build commit: ", buildCommit)

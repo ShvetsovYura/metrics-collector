@@ -16,6 +16,7 @@ type Options struct {
 	DBDSN           string `env:"DATABASE_DSN"`      // строка подключения к БД
 	Key             string `env:"KEY"`               // ключ хеширования сообщения
 	CryptoKey       string `env:"CRYPTO_KEY"`        // путь до файла с приватным ключом
+	Config          string `end:"CONFIG"`            // Config: путь до файла конфигурации
 }
 
 const defaultStoreInterval = 300
@@ -29,7 +30,8 @@ func (o *Options) ParseArgs() {
 	flag.StringVar(&o.DBDSN, "d", "", "database connection DSN")
 	flag.StringVar(&o.Key, "k", "", "Secret key value")
 	flag.StringVar(&o.CryptoKey, "crypto-key", "", "path to private key")
-
+	flag.StringVar(&o.Config, "c", "", "path to config file")
+	flag.StringVar(&o.Config, "config", "", "path to config file")
 	flag.Parse()
 }
 
