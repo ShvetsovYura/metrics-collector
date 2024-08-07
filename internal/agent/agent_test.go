@@ -102,9 +102,9 @@ func TestAgent_processMetrics(t *testing.T) {
 				metrics: tt.fields.metrics,
 				options: tt.fields.options,
 			}
-			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go a.processMetrics(wg, tt.args.metricsCh)
+			// wg := &sync.WaitGroup{}
+			// wg.Add(1)
+
 			for i, v := range []float64{1.23, 2.34, 3.45, 5.67} {
 				tt.args.metricsCh <- MetricItem{
 					ID:    "gauge" + strconv.Itoa(i),
@@ -112,8 +112,9 @@ func TestAgent_processMetrics(t *testing.T) {
 					Value: v,
 				}
 			}
+			a.processMetrics(tt.args.metricsCh)
 			close(tt.args.metricsCh)
-			wg.Wait()
+			// wg.Wait()
 			assert.Equal(t, 5, len(tt.fields.metrics))
 			assert.EqualValues(t, tt.want, tt.fields.metrics)
 		})
@@ -135,7 +136,7 @@ func Benchmark_multiplexMetrics(b *testing.B) {
 			addMetricsCh := a.collectAdditionalMetricsGenerator()
 			allMetricsCh := multiplexChannels(ctx, metricsCh, addMetricsCh)
 
-			go a.processMetrics(wg, allMetricsCh)
+			go a.processMetrics(allMetricsCh)
 
 			wg.Wait()
 		}
@@ -155,7 +156,7 @@ func Benchmark_multiplexMetrics(b *testing.B) {
 			addMetricsCh := a.collectAdditionalMetricsGenerator()
 			allMetricsCh := multiplexChannels(ctx, metricsCh, addMetricsCh)
 
-			go a.processMetrics(wg, allMetricsCh)
+			go a.processMetrics(allMetricsCh)
 
 			wg.Wait()
 		}

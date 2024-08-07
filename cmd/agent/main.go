@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/agent"
+	"github.com/ShvetsovYura/metrics-collector/internal/agent/sender"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
@@ -21,24 +22,26 @@ var (
 const metricsCount int = 40
 
 func main() {
-
+	fmt.Println("Запускается АГЕНТ сбора метрик...")
 	opts := agent.ReadOptions()
 	err := logger.InitLogger(opts.LogLevel)
 	if err != nil {
 		fmt.Println("Не удалось инициализировать лог")
 	}
 
-	a := agent.NewAgent(metricsCount, opts)
-
-	logger.Log.Info("Start AGENT app")
+	metricSender := sender.NewMetricSender(
+		"http://"+opts.EndpointAddr+"/update/", agent.DefaultContentType, opts.Key, opts.CryptoKey,
+	)
+	a := agent.NewAgent(metricsCount, metricSender, opts)
 	showBuildInfo("Build version: ", buildVersion)
 	showBuildInfo("Build date: ", buildDate)
 	showBuildInfo("Build commit: ", buildCommit)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	defer stop()
 	a.Run(ctx)
+	logger.Log.Info("работа АГЕНТА сбора метрик завершена")
 }
 
 func showBuildInfo(caption string, v string) {

@@ -34,7 +34,7 @@ func main() {
 	showBuildInfo("Build date: ", buildDate)
 	showBuildInfo("Build commit: ", buildCommit)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	defer stop()
 

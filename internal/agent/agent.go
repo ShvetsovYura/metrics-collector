@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math/rand"
 	"runtime"
 	"strconv"
@@ -12,42 +13,64 @@ import (
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/agent/sender"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
-// Metric: структура метрики для коммуникации (отправки) с другими сервисами
-type Metric struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-}
-
 // MetricItem: универсальная структура для данных для хранения единицы метрики
 type MetricItem struct {
-	ID    string
-	MType string
-	Delta int64
-	Value float64
+	ID    string  `json:"id"`              // имя метрики
+	MType string  `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-// Agent: структура, содержащая собраные метрики
+func (m MetricItem) MarshalJSON() ([]byte, error) {
+	type MetricAlias MetricItem
+
+	if m.MType == CounterTypeName {
+		aliasValue := struct {
+			MetricAlias
+			Delta *int64 `json:"delta,omitempty"`
+		}{
+			MetricAlias: MetricAlias(m),
+			Delta:       &m.Delta,
+		}
+		return json.Marshal(aliasValue)
+
+	}
+	if m.MType == GaugeTypeName {
+		aliasValue := struct {
+			MetricAlias
+			ValuePtr *float64 `json:"value,omitempty"`
+		}{
+			MetricAlias: MetricAlias(m),
+			ValuePtr:    &m.Value,
+		}
+
+		return json.Marshal(aliasValue)
+	}
+
+	return nil, errors.New("нет корретного типа метрики")
+}
+
+type Sender interface {
+	Send(data []byte) error
+}
+
+// Agent: структура, для работы с метриками
 type Agent struct {
 	mx      sync.RWMutex
 	metrics map[string]MetricItem
 	options *Options
-	sender  *sender.MetricSender
+	sender  Sender
 }
 
 // NewAgent: инициализация нового экземляра агента сбора метрик
-func NewAgent(metricsCount int, options *Options) *Agent {
+func NewAgent(metricsCount int, metricSender Sender, options *Options) *Agent {
 	return &Agent{
 		metrics: make(map[string]MetricItem, metricsCount),
 		options: options,
-		sender: sender.NewMetricSender(
-			"http://"+options.EndpointAddr+"/update/", DefaultContentType, options.Key, options.CryptoKey,
-		),
+		sender:  metricSender,
 	}
 }
 
@@ -59,121 +82,41 @@ func (a *Agent) Run(ctx context.Context) {
 	go a.runCollectMetrics(ctx, wg)
 	go a.runSendMetrics(ctx, wg)
 
+	logger.Log.Info("процессы агента запущены")
 	wg.Wait()
-	logger.Log.Info("end agent app")
 }
 
 func (a *Agent) runCollectMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	collectTicker := time.NewTicker(a.options.PollInterval)
 
-	defer collectTicker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			wg.Done()
-
-			return
-		case <-collectTicker.C:
-			processWaiter := &sync.WaitGroup{}
-
-			processWaiter.Add(1)
-
-			metricsCh := a.collectMetricsGenerator()
-			addMetricsCh := a.collectAdditionalMetricsGenerator()
-			allMetricsCh := multiplexChannels(ctx, metricsCh, addMetricsCh)
-
-			go a.processMetrics(processWaiter, allMetricsCh)
-
-			wg.Wait()
-		}
-	}
-}
-
-func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
-	var toSend = make(chan MetricItem, 100)
-
-	sendTicker := time.NewTicker(a.options.ReportInterval)
-
-	defer sendTicker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			close(toSend)
-			wg.Done()
-
-			return
-		case <-sendTicker.C:
-			logger.Log.Info("start send")
-			a.mx.RLock()
-
-			for _, v := range a.metrics {
-				toSend <- v
-			}
-			a.mx.RUnlock()
-
-			var workers int
-
-			if a.options.RateLimit == 0 {
-				workers = len(a.metrics)
-			} else {
-				workers = a.options.RateLimit
-			}
-
-			for w := 0; w < workers; w++ {
-				go a.senderWorker(toSend)
-			}
-			logger.Log.Info("end send")
-		}
-	}
-}
-
-func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
-	for m := range metricsCh {
-		var data []byte
-
-		if m.MType == GaugeTypeName {
-			data, _ = json.Marshal(Metric{
-				ID:    m.ID,
-				MType: m.MType,
-				// если не буду ссылаться на поле другой структуры, то всегда по-ссылке
-				// будет последнее значение gauge и для всех одинаковое
-				// поэтому пришлось сделать еще одну структуру в начале файла,
-				// но с полями-значениями, а не ссылками
-				Value: &m.Value,
-			})
-		}
-
-		if m.MType == CounterTypeName {
-			data, _ = json.Marshal(Metric{
-				ID:    m.ID,
-				MType: m.MType,
-				Delta: &m.Delta,
-			})
-		}
-		a.mx.Lock()
-		err := a.sender.Send(data)
-		if err != nil {
-			logger.Log.Errorf("Не удалось отправить метрику: %v", data)
-		}
-		a.mx.Unlock()
-	}
-
-}
-
-func (a *Agent) processMetrics(wg *sync.WaitGroup, metricsCh <-chan MetricItem) {
 	defer func() {
-		a.mx.Unlock()
+		collectTicker.Stop()
 		wg.Done()
 	}()
 
-	a.mx.Lock()
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Log.Info("остановка сбора метрик...")
+			return
+		case <-collectTicker.C:
+			logger.Log.Debug("collect metric")
 
-	for m := range metricsCh {
-		a.metrics[m.ID] = m
+			metricsCh := a.collectMetricsGenerator()
+			addMetricsCh := a.collectAdditionalMetricsGenerator()
+			mxCh := multiplexChannels(ctx, metricsCh, addMetricsCh)
+			// если убрать блокировку - будет падать
+			a.mx.Lock()
+			for m := range mxCh {
+				a.metrics[m.ID] = m
+			}
+			a.incrementCounter()
+			a.mx.Unlock()
+		}
 	}
+}
 
+func (a *Agent) incrementCounter() {
 	// TODO: Не нравится нижеследующий блок, подумать над изменением
 	// дефолтное значение типа = 0
 	var newVal int64
@@ -189,7 +132,97 @@ func (a *Agent) processMetrics(wg *sync.WaitGroup, metricsCh <-chan MetricItem) 
 		MType: CounterTypeName,
 		Delta: newVal,
 	}
+}
 
+func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
+	var metricsBufferCh = make(chan MetricItem, 10)
+
+	sendTicker := time.NewTicker(a.options.ReportInterval)
+
+	defer func() {
+		sendTicker.Stop()
+		close(metricsBufferCh)
+		wg.Done()
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Log.Info("завершение процесса отправки...")
+			return
+		case <-sendTicker.C:
+			logger.Log.Debug("start send")
+			// если бы это было здесь, то залочило бы с размером канала = 10
+			// a.mx.RLock()
+
+			// for _, v := range a.metrics {
+			// 	metricsBufferCh <- v
+			// }
+			// a.mx.RUnlock()
+
+			var workers int
+
+			if a.options.RateLimit == 0 {
+				workers = len(a.metrics)
+			} else {
+				workers = a.options.RateLimit
+			}
+
+			for w := 0; w < workers; w++ {
+				go a.senderWorker(metricsBufferCh)
+			}
+			a.mx.RLock()
+
+			for _, v := range a.metrics {
+				metricsBufferCh <- v
+			}
+			a.mx.RUnlock()
+			logger.Log.Debug("end send")
+		}
+	}
+}
+
+func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
+	for m := range metricsCh {
+		data, err := json.Marshal(m)
+		if err != nil {
+			logger.Log.Error(err)
+		} else {
+			if err := a.sender.Send(data); err != nil {
+				logger.Log.Warnf("не удалось отправить метрику: %s", data)
+			}
+		}
+	}
+}
+
+func multiplexChannels(ctx context.Context, channels ...chan MetricItem) chan MetricItem {
+	resultCh := make(chan MetricItem)
+	wg := &sync.WaitGroup{}
+
+	for _, ch := range channels {
+		wg.Add(1)
+
+		chClosure := ch
+
+		go func() {
+			defer wg.Done()
+
+			for item := range chClosure {
+				select {
+				case <-ctx.Done():
+					return
+				case resultCh <- item:
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	return resultCh
 }
 
 func makeGaugeMetricItem(name string, val float64) MetricItem {
@@ -255,34 +288,4 @@ func (a *Agent) collectAdditionalMetricsGenerator() chan MetricItem {
 	}()
 
 	return outCh
-}
-
-func multiplexChannels(ctx context.Context, channels ...chan MetricItem) chan MetricItem {
-	resultCh := make(chan MetricItem)
-	wg := &sync.WaitGroup{}
-
-	for _, ch := range channels {
-		wg.Add(1)
-
-		chClosure := ch
-
-		go func() {
-			defer wg.Done()
-
-			for item := range chClosure {
-				select {
-				case <-ctx.Done():
-					return
-				case resultCh <- item:
-				}
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
-
-	return resultCh
 }
