@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/agent"
-	"github.com/ShvetsovYura/metrics-collector/internal/agent/sender"
+	httpclient "github.com/ShvetsovYura/metrics-collector/internal/agent/http_client"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
@@ -29,10 +29,11 @@ func main() {
 		fmt.Println("Не удалось инициализировать лог")
 	}
 
-	metricSender := sender.NewMetricSender(
+	metricSender := httpclient.NewMetricSender(
 		"http://"+opts.EndpointAddr+"/update/", agent.DefaultContentType, opts.Key, opts.CryptoKey,
 	)
-	a := agent.NewAgent(metricsCount, metricSender, opts)
+	metricCollection := agent.NewMetricCollector(metricsCount)
+	a := agent.NewAgent(metricCollection, metricSender, opts)
 	showBuildInfo("Build version: ", buildVersion)
 	showBuildInfo("Build date: ", buildDate)
 	showBuildInfo("Build commit: ", buildCommit)
