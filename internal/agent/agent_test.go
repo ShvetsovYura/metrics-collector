@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type MockHttpClient struct {
+type MockHTTPClient struct {
 }
 
-func (c *MockHttpClient) Send(data []byte) error {
+func (c *MockHTTPClient) Send(data []byte) error {
 	return nil
 }
 
@@ -40,7 +40,7 @@ func TestAgent_collectMetricsGenerator(t *testing.T) {
 		{
 			name: "success get metrics",
 			fields: fields{
-				httpClient: &MockHttpClient{},
+				httpClient: &MockHTTPClient{},
 				count:      10,
 			},
 			args: args{
@@ -120,7 +120,7 @@ func TestAgent_collectAdditionalMetricsGenerator(t *testing.T) {
 		{
 			name: "simple test collect addiditional metrics",
 			fields: fields{
-				httpClient: &MockHttpClient{},
+				httpClient: &MockHTTPClient{},
 				options:    nil,
 				count:      10,
 			},
@@ -181,7 +181,7 @@ func TestAgent_runCollectMetrics(t *testing.T) {
 				PollInterval: pollInterval,
 			}
 			c := NewMetricCollector(10)
-			s := &MockHttpClient{}
+			s := &MockHTTPClient{}
 			a := NewAgent(c, s, &opt)
 			ctx, cancel := context.WithCancel(context.Background())
 			wg := sync.WaitGroup{}
