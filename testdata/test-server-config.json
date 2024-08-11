@@ -1,0 +1,7 @@
+{
+    "address": "localhost:6789",
+    "restore": true,
+    "store_interval": "600s", 
+    "crypto_key": "hoho.pem",
+    "log_level": "debug"
+}

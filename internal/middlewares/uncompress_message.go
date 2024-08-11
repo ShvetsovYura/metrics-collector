@@ -29,11 +29,7 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 
 func (c *compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
-	// if err!=nil{
-	// 	return num, fmt.Errorf("gzip read error %w", err)
-	// }
-	// }
-	// return num, nil
+
 }
 
 func (c *compressReader) Close() error {

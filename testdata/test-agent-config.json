@@ -1,0 +1,7 @@
+{
+    "address": "localhost:9876",
+    "report_interval": "300ms",
+    "poll_interval": "1s",
+    "crypto_key": "abracadabra.pem",
+    "log_level": "debug"
+}

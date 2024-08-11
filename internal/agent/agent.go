@@ -132,10 +132,10 @@ func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 			next := a.collection.Items()
 			for {
 				val, hasNext := next()
+				metricsBufferCh <- val
 				if !hasNext {
 					break
 				}
-				metricsBufferCh <- val
 			}
 
 			a.mx.RUnlock()

@@ -38,7 +38,9 @@ func ReadOptions() *Options {
 	// чтение аругментов
 	opt.parseArgs()
 	// чтение переменных окружения и перезапись пустых значений
-	opt.parseEnvs()
+	if err := opt.parseEnvs(); err != nil {
+		logger.Log.Fatal(err.Error())
+	}
 	// чтение конфига и перезапись пустых значений
 	if path := opt.getConfigPath(); path != "" {
 		opt.applyConfig(path)
@@ -112,7 +114,10 @@ func (o *Options) applyConfig(path string) {
 		}
 
 		opt := &Options{}
-		json.Unmarshal(data, opt)
+		if err := json.Unmarshal(data, opt); err != nil {
+			logger.Log.Error(err.Error())
+			return
+		}
 		// не очень красиво
 		reassignOptions(o, opt)
 	}
