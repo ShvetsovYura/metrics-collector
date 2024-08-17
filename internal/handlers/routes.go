@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http/pprof"
 
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 
 	"github.com/ShvetsovYura/metrics-collector/internal"
@@ -38,7 +38,7 @@ type Storage interface {
 }
 
 // ServerRouter, функция объявления роутинга http-запросов и их обработчиков.
-func ServerRouter(s Storage, key string) chi.Router {
+func ServerRouter(s Storage, key string, privateKeyPath string) chi.Router {
 	logger.NewHTTPLogger()
 
 	r := chi.NewRouter()
@@ -48,6 +48,9 @@ func ServerRouter(s Storage, key string) chi.Router {
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 	r.Use(httplog.RequestLogger(logger.HTTPLogger))
 	r.Use(middlewares.WithUnzipRequest)
+	if privateKeyPath != "" {
+		r.Use(middlewares.DecryptMessage(privateKeyPath))
+	}
 	r.Use(middlewares.ResposeHeaderWithHash(key))
 
 	r.Get("/", MetricGetCurrentValuesHandler(s))

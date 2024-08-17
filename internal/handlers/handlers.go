@@ -136,6 +136,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 				logger.Log.Errorf("Ошибка закрытия тела ответа, %s", bodyCloseErr.Error())
 			}
 		}()
+		logger.Log.Infof("incoming value: %v", string(b))
 		w.Header().Set("Content-Type", "application/json")
 
 		if err := json.Unmarshal(b, &e); err != nil {
@@ -185,6 +186,7 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 				MType: internal.InCounterName,
 				Delta: val.GetRawValue(),
 			}
+			logger.Log.Infof("metric actual value %v", actualVal)
 
 			marshalVal, marshalErr = json.Marshal(actualVal)
 			if marshalErr != nil {
@@ -204,7 +206,6 @@ func MetricUpdateHandlerWithBody(m Storage) http.HandlerFunc {
 
 			return
 		}
-
 		w.WriteHeader(http.StatusOK)
 	}
 }

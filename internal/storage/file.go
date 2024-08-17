@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/models"
@@ -30,7 +31,7 @@ type File struct {
 	memStorage  MemoryStore
 }
 
-func NewFile(pathToFile string, memStorage MemoryStore, restore bool, storeInterval int) *File {
+func NewFile(pathToFile string, memStorage MemoryStore, restore bool, storeInterval time.Duration) *File {
 	immediatelySave := false
 	if storeInterval == 0 {
 		immediatelySave = true

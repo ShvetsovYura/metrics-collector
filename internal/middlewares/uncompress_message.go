@@ -28,16 +28,18 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 }
 
 func (c *compressReader) Read(p []byte) (n int, err error) {
-	num, err := c.zr.Read(p)
-	return num, fmt.Errorf("read error %w", err)
+	return c.zr.Read(p)
+
 }
 
 func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
-		return fmt.Errorf("ошибка закрытия ридера, %w", err)
+		return fmt.Errorf("ошибка закрытия оригинального ридера, %w", err)
 	}
-
-	return fmt.Errorf("%w", c.zr.Close())
+	if err := c.zr.Close(); err != nil {
+		return fmt.Errorf("ошибка закрытия gzip ридера, %w", err)
+	}
+	return nil
 }
 
 // WithUnzipRequest, мидлваря для распаковки принятых сжатых данных.

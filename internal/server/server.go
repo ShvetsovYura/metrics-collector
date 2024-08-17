@@ -32,7 +32,7 @@ func NewServer(metricsCount int, opt *Options) *Server {
 		targetStorage handlers.Storage
 		saverStorage  StorageCloser
 	)
-
+	// TODO: Подумать над упрощением
 	if opt.DBDSN == "" {
 		m := storage.NewMemory(metricsCount)
 		if opt.FileStoragePath == "" {
@@ -59,7 +59,7 @@ func NewServer(metricsCount int, opt *Options) *Server {
 		storage: saverStorage,
 		webserver: &http.Server{
 			Addr:    opt.EndpointAddr,
-			Handler: handlers.ServerRouter(targetStorage, opt.Key),
+			Handler: handlers.ServerRouter(targetStorage, opt.Key, opt.CryptoKey),
 		},
 		options: opt,
 	}
@@ -67,38 +67,32 @@ func NewServer(metricsCount int, opt *Options) *Server {
 
 // Run, запускает сервер.
 func (s *Server) Run(ctx context.Context) error {
-	logger.Log.Info("START HTTP SERVER")
-
-	ticker := time.NewTicker(time.Duration(s.options.StoreInterval) * time.Second)
-
+	logger.Log.Info("run Server app")
 	var wg sync.WaitGroup
-
 	wg.Add(1)
+	ticker := time.NewTicker(s.options.StoreInterval)
 
 	go func() {
 		defer wg.Done()
-
 		for {
 			select {
 			case <-ctx.Done():
 				logger.Log.Info("Останавливаю http сервер...")
-
-				err := s.webserver.Shutdown(ctx)
-				if err != nil {
+				// сначала - остановка сервера, чтобы не принимал новые запросы
+				if err := s.webserver.Shutdown(ctx); err != nil {
 					logger.Log.Fatalf("не удалось остановить сервер %s", err.Error())
 				}
 
-				logger.Log.Info("http сервер остановлен!")
 				// используется для сохранения метрик в файл
 				// но реализован только для файлового стораджа
 				// в остальных - методы-заглушки
-				err = s.storage.Save()
-				if err != nil {
+				if err := s.storage.Save(); err != nil {
 					logger.Log.Error(err)
 				}
-
+				logger.Log.Info("http сервер остановлен!")
 				return
 			case <-ticker.C:
+				logger.Log.Debug("что-то другое")
 				err := s.storage.Save()
 				if err != nil {
 					logger.Log.Errorf("Ошибка сохранения метрик, %s", err.Error())
@@ -107,9 +101,9 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}()
 
-	err := s.webserver.ListenAndServe()
-	logger.Log.Fatalf("не удалось запусить web сервер, %s", err.Error())
+	if err := s.webserver.ListenAndServe(); err != http.ErrServerClosed {
+		logger.Log.Fatalf("не удалось запусить web сервер, %s", err.Error())
+	}
 	wg.Wait()
-
 	return nil
 }

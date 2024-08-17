@@ -5,11 +5,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os/signal"
 	"syscall"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/agent"
+	httpclient "github.com/ShvetsovYura/metrics-collector/internal/agent/http_client"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
 
@@ -22,29 +22,27 @@ var (
 const metricsCount int = 40
 
 func main() {
-	err := logger.InitLogger("info")
+	fmt.Println("Запускается АГЕНТ сбора метрик...")
+	opts := agent.ReadOptions()
+	err := logger.InitLogger(opts.LogLevel)
 	if err != nil {
 		fmt.Println("Не удалось инициализировать лог")
 	}
 
-	opts := new(agent.Options)
-	opts.ParseArgs()
-
-	if err := opts.ParseEnvs(); err != nil {
-		log.Fatal(err.Error())
-	}
-
-	a := agent.NewAgent(metricsCount, opts)
-
-	logger.Log.Info("Start agent app")
+	metricSender := httpclient.NewMetricSender(
+		"http://"+opts.EndpointAddr+"/update/", agent.DefaultContentType, opts.Key, opts.CryptoKey,
+	)
+	metricCollection := agent.NewMetricCollector(metricsCount)
+	a := agent.NewAgent(metricCollection, metricSender, opts)
 	showBuildInfo("Build version: ", buildVersion)
 	showBuildInfo("Build date: ", buildDate)
 	showBuildInfo("Build commit: ", buildCommit)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	defer stop()
 	a.Run(ctx)
+	logger.Log.Info("работа АГЕНТА сбора метрик завершена")
 }
 
 func showBuildInfo(caption string, v string) {
