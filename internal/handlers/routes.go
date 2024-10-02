@@ -38,11 +38,10 @@ type Storage interface {
 }
 
 // ServerRouter, функция объявления роутинга http-запросов и их обработчиков.
-func ServerRouter(s Storage, key string, privateKeyPath string) chi.Router {
+func ServerRouter(s Storage, key string, privateKeyPath string, trustedSubnet string) chi.Router {
 	logger.NewHTTPLogger()
 
 	r := chi.NewRouter()
-
 	r.Use(middlewares.CheckRequestHashHeader(key))
 
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
@@ -56,13 +55,13 @@ func ServerRouter(s Storage, key string, privateKeyPath string) chi.Router {
 	r.Get("/", MetricGetCurrentValuesHandler(s))
 
 	pattern := fmt.Sprintf("/update/{%s}/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam, internal.MetricValuePathParam)
-	r.Post(pattern, MetricUpdateHandler(s))
+	r.With(middlewares.CheckTrustetSubnet(trustedSubnet)).Post(pattern, MetricUpdateHandler(s))
 
 	pattern = fmt.Sprintf("/value/{%s}/{%s}", internal.MetricTypePathParam, internal.MetricNamePathParam)
 	r.Get(pattern, MetricGetValueHandler(s))
 
-	r.Post("/update/", MetricUpdateHandlerWithBody(s))
-	r.Post("/updates/", MetricBatchUpdateHandler(s))
+	r.With(middlewares.CheckTrustetSubnet(trustedSubnet)).Post("/update/", MetricUpdateHandlerWithBody(s))
+	r.With(middlewares.CheckTrustetSubnet(trustedSubnet)).Post("/updates/", MetricBatchUpdateHandler(s))
 	r.Post("/value/", MetricGetValueHandlerWithBody(s))
 	r.Get("/ping", DBPingHandler(s))
 

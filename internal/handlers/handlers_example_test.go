@@ -17,7 +17,7 @@ import (
 
 func ExampleDBPingHandler() {
 	s := storage.NewMemory(10)
-	routes := handlers.ServerRouter(s, "abc", "")
+	routes := handlers.ServerRouter(s, "abc", "", "")
 	ts := httptest.NewServer(routes)
 
 	defer ts.Close()

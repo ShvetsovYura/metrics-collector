@@ -35,6 +35,11 @@ func (c *MetricHTTPClient) Send(data []byte) error {
 	var data_ []byte
 
 	headers.Add("Content-Type", c.contentType)
+	addresses, err := util.GetLocalIPs()
+	if err != nil {
+		return fmt.Errorf("ошибка получения IP %w", err)
+	}
+	headers.Add("X-Real-IP", addresses[0].String())
 
 	if c.publicKeyPath != "" {
 		var errEncrypt error

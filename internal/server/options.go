@@ -30,6 +30,7 @@ type Options struct {
 	DBDSN           string        `env:"DATABASE_DSN" json:"database_dsn"`     // строка подключения к БД
 	Key             string        `env:"KEY" json:"key"`                       // ключ хеширования сообщения
 	CryptoKey       string        `env:"CRYPTO_KEY" json:"crypto_key"`         // путь до файла с приватным ключом
+	TrustedSubnet   string        `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 	LogLevel        string        `env:"LOG_LEVEL" json:"log_level"`
 }
 
@@ -141,6 +142,7 @@ func (o *Options) parseArgs() {
 	flag.StringVar(&o.DBDSN, "d", "", "database connection DSN")
 	flag.StringVar(&o.Key, "k", "", "Secret key value")
 	flag.StringVar(&o.CryptoKey, "crypto-key", "", "path to private key")
+	flag.StringVar(&o.TrustedSubnet, "t", "", "verify client in trusted subnet")
 
 	flag.Parse()
 }
@@ -182,5 +184,8 @@ func reassignOptions(curOpt *Options, tempOpt *Options) {
 	}
 	if curOpt.LogLevel == "" && tempOpt.LogLevel != "" {
 		curOpt.LogLevel = tempOpt.LogLevel
+	}
+	if curOpt.TrustedSubnet == "" && tempOpt.TrustedSubnet != "" {
+		curOpt.TrustedSubnet = tempOpt.TrustedSubnet
 	}
 }
