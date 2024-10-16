@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -9,23 +10,31 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage"
+	pb "github.com/ShvetsovYura/metrics-collector/proto"
+	"google.golang.org/grpc"
 )
 
 type StorageCloser interface {
 	Save() error
 }
 
+type IServer interface {
+	StartListen() error
+	Shutdown(ctx context.Context) error
+	RegisterHandlers(handlers.Storage, *Options)
+}
+
 // Server, хранит информации о сервере сбора метрик.
 type Server struct {
 	// можно было бы вообще без этого интерфейса
 	// но тогда не понятно - как сохранять метрики в файл в `Run`
-	storage   StorageCloser
-	webserver *http.Server
-	options   *Options
+	storage StorageCloser
+	server  IServer
+	options *Options
 }
 
 // NewServer, создает новый сервер работы с метриками.
-func NewServer(metricsCount int, opt *Options) *Server {
+func NewServer(server IServer, metricsCount int, opt *Options) *Server {
 	dbCtx := context.Background()
 
 	var (
@@ -52,15 +61,12 @@ func NewServer(metricsCount int, opt *Options) *Server {
 		targetStorage = d
 		saverStorage = d
 	}
-
+	server.RegisterHandlers(targetStorage, opt)
 	return &Server{
 		// из-за того, что удалил методы Save и Restore из интерфейса Storage
 		// приходится костылить такое - дублирование стораджа, но с другим интерфейсом
 		storage: saverStorage,
-		webserver: &http.Server{
-			Addr:    opt.EndpointAddr,
-			Handler: handlers.ServerRouter(targetStorage, opt.Key, opt.CryptoKey, opt.TrustedSubnet),
-		},
+		server:  server,
 		options: opt,
 	}
 }
@@ -77,9 +83,9 @@ func (s *Server) Run(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
-				logger.Log.Info("Останавливаю http сервер...")
+				logger.Log.Info("Останавливаю сервер...")
 				// сначала - остановка сервера, чтобы не принимал новые запросы
-				if err := s.webserver.Shutdown(ctx); err != nil {
+				if err := s.server.Shutdown(ctx); err != nil {
 					logger.Log.Fatalf("не удалось остановить сервер %s", err.Error())
 				}
 
@@ -101,9 +107,66 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}()
 
-	if err := s.webserver.ListenAndServe(); err != http.ErrServerClosed {
+	if err := s.server.StartListen(); err != http.ErrServerClosed {
 		logger.Log.Fatalf("не удалось запусить web сервер, %s", err.Error())
 	}
+
 	wg.Wait()
+	return nil
+}
+
+type HTTPServer struct {
+	webserver *http.Server
+}
+
+func NewHttpServer() *HTTPServer {
+	return &HTTPServer{}
+}
+
+func (s *HTTPServer) StartListen() error {
+	err := s.webserver.ListenAndServe()
+	return err
+}
+
+func (s *HTTPServer) RegisterHandlers(targetStorage handlers.Storage, opt *Options) {
+	s.webserver = &http.Server{
+		Addr:    opt.EndpointAddr,
+		Handler: handlers.ServerRouter(targetStorage, opt.Key, opt.CryptoKey, opt.TrustedSubnet),
+	}
+}
+
+func (s *HTTPServer) Shutdown(ctx context.Context) error {
+	err := s.webserver.Shutdown(ctx)
+	return err
+}
+
+type GRPCServer struct {
+	grpcServer grpc.Server
+}
+
+func NewGRPCServer() *GRPCServer {
+	return &GRPCServer{
+		grpcServer: *grpc.NewServer(),
+	}
+}
+
+func (s *GRPCServer) RegisterHandlers(targetStorage handlers.Storage, opt *Options) {
+	pb.RegisterMetricsServer(
+		&s.grpcServer,
+		handlers.NewMetricServer(targetStorage),
+	)
+}
+
+func (s *GRPCServer) StartListen() error {
+	listen, err := net.Listen("tcp", ":3200")
+	if err != nil {
+		return err
+	}
+	return s.grpcServer.Serve(listen)
+
+}
+
+func (s *GRPCServer) Shutdown(ctx context.Context) error {
+	s.grpcServer.Stop()
 	return nil
 }

@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package pr;
+option go_package = "metric-collector/proto";
+
+
+message Metric {
+    string id = 1;
+    string mtype = 2;
+    int64 delta = 3;
+    double value = 4;
+}
+
+message ListMetricsValuesRequest {}
+
+message ListMetricsValuesResponse {
+    repeated string values = 1;
+}
+
+message UpdateMetricRequest {
+    string id = 1;
+    string mtype = 2;
+    int64 delta = 3;
+    double value = 4;
+}
+
+message UpdateMetricResponse {
+    string id = 1;
+    string mtype = 2;
+    optional int64 delta = 3;
+    optional double value = 4;
+}
+
+message BatchUpdateMtericsRequest {
+    repeated Metric metrics = 1;
+}
+
+message BatchUpdateMetricsResponse {}
+
+message GetMetricRequest {
+    string name = 1;
+}
+
+message GetMetricResponse{
+    string id = 1;
+    string mtype = 2;
+    optional int64 delta = 3;
+    optional double value = 4;
+}
+
+message DbPingRequest {}
+message DbPingResponse {}
+
+service Metrics {
+    rpc ListMetricsValues(ListMetricsValuesRequest) returns (ListMetricsValuesResponse);
+    rpc UpdateMetric(UpdateMetricRequest) returns (UpdateMetricResponse);
+    rpc BatchUpdateMetrics(BatchUpdateMtericsRequest) returns (BatchUpdateMetricsResponse);
+    rpc GetMetric(GetMetricRequest) returns (GetMetricResponse);
+    rpc DbPing(DbPingRequest) returns(DbPingResponse);
+}

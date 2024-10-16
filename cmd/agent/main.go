@@ -21,7 +21,7 @@ var (
 
 const metricsCount int = 40
 
-func main() {
+func main1() {
 	fmt.Println("Запускается АГЕНТ сбора метрик...")
 	opts := agent.ReadOptions()
 	err := logger.InitLogger(opts.LogLevel)
