@@ -108,6 +108,14 @@ func (s *MetricServer) BatchUpdateMetrics(ctx context.Context, in *pb.BatchUpdat
 }
 
 func (s *MetricServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest) (*pb.GetMetricResponse, error) {
+	// md, ok := metadata.FromIncomingContext(ctx)
+	// if ok {
+	// 	values := md.Get("ugugu")
+	// 	if len(values) > 0 {
+	// 		logger.Log.Info(values)
+	// 	}
+	// }
+
 	valGauge, err := s.metrics.GetGauge(ctx, in.Name)
 	if err == nil {
 		return &pb.GetMetricResponse{

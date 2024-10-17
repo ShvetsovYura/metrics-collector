@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
+	"github.com/ShvetsovYura/metrics-collector/internal/interceptors"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 	pb "github.com/ShvetsovYura/metrics-collector/proto"
@@ -145,8 +146,13 @@ type GRPCServer struct {
 }
 
 func NewGRPCServer() *GRPCServer {
+	opts := []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(
+			interceptors.HashInterceptorWrapper("abracadabra"),
+		),
+	}
 	return &GRPCServer{
-		grpcServer: *grpc.NewServer(),
+		grpcServer: *grpc.NewServer(opts...),
 	}
 }
 

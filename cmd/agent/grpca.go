@@ -8,6 +8,7 @@ import (
 	pb "github.com/ShvetsovYura/metrics-collector/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 func main() {
@@ -17,19 +18,19 @@ func main() {
 		log.Fatal(err)
 	}
 	defer conn.Close()
+	var respHeaders metadata.MD
 	// получаем переменную интерфейсного типа UsersClient,
 	// через которую будем отправлять сообщения
 	c := pb.NewMetricsClient(conn)
+	md := metadata.New(map[string]string{"HashSHA256": "066985110483cecc7b9e52576c2852829a3886c1eeff6dfe5cd94034805f307a"})
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	r, err := c.GetMetric(ctx, &pb.GetMetricRequest{
+		Name: "hoho",
+	}, grpc.Header(&respHeaders))
 
-	r, err := c.SetMetric(context.Background(), &pb.SetMetricRequest{
-		Metric: &pb.Metric{
-			Id:    "AwesomeMetric",
-			Mtype: "gauge",
-			Value: float32(123.33),
-		},
-	})
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	fmt.Println(r)
 }
