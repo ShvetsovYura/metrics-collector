@@ -3,10 +3,12 @@ package httpclient
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/agent"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
@@ -19,7 +21,7 @@ type MetricHTTPClient struct {
 	publicKeyPath string
 }
 
-func NewMetricSender(url string, contentType string, hashKey string, publicKeyPath string) *MetricHTTPClient {
+func NewClient(url string, contentType string, hashKey string, publicKeyPath string) *MetricHTTPClient {
 	return &MetricHTTPClient{
 		client:        http.Client{},
 		url:           url,
@@ -29,10 +31,15 @@ func NewMetricSender(url string, contentType string, hashKey string, publicKeyPa
 	}
 }
 
-func (c *MetricHTTPClient) Send(data []byte) error {
+func (c *MetricHTTPClient) Send(item agent.MetricItem) error {
 	var buf bytes.Buffer
 	var headers = http.Header{}
 	var data_ []byte
+
+	data, err := json.Marshal(item)
+	if err != nil {
+		return fmt.Errorf("ошибка json %w", err)
+	}
 
 	headers.Add("Content-Type", c.contentType)
 	addresses, err := util.GetLocalIPs()

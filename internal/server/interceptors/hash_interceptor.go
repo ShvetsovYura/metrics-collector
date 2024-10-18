@@ -34,7 +34,7 @@ func HashInterceptorWrapper(key string) grpc.UnaryServerInterceptor {
 		hash := util.Hash(body, key)
 		respMd := metadata.New(map[string]string{"HashSHA256": hash})
 		if err := grpc.SendHeader(ctx, respMd); err != nil {
-			return nil, status.Error(codes.Internal, "unable to send 'x-response-id' header")
+			return nil, status.Error(codes.Internal, "unable to send 'HashSHA256' header")
 		}
 
 		return res, err

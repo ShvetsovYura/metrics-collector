@@ -13,6 +13,7 @@ import (
 	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 	pb "github.com/ShvetsovYura/metrics-collector/proto"
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 type StorageCloser interface {

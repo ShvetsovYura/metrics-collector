@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"math/rand"
 	"runtime"
 	"strconv"
@@ -20,7 +19,7 @@ func MakeGaugeMetricItem(name string, val float64) MetricItem {
 }
 
 type Sender interface {
-	Send(data []byte) error
+	Send(item MetricItem) error
 }
 type Setter interface {
 	SetItem(m MetricItem)
@@ -146,13 +145,8 @@ func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 
 func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
 	for m := range metricsCh {
-		data, err := json.Marshal(m)
-		if err != nil {
-			logger.Log.Error(err)
-		} else {
-			if err := a.sender.Send(data); err != nil {
-				logger.Log.Warnf("не удалось отправить метрику: %s", data)
-			}
+		if err := a.sender.Send(m); err != nil {
+			logger.Log.Warnf("не удалось отправить метрику: %s", m)
 		}
 	}
 }
