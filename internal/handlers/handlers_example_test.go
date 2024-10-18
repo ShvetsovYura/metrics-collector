@@ -45,7 +45,7 @@ func ExampleDBPingHandler() {
 
 func ExampleMetricBatchUpdateHandler() {
 	s := storage.NewMemory(10)
-	routes := handlers.ServerRouter(s, "key", "")
+	routes := handlers.ServerRouter(s, "key", "", "")
 	ts := httptest.NewServer(routes)
 
 	defer ts.Close()
@@ -106,7 +106,7 @@ func ExampleMetricGetCurrentValuesHandler() {
 
 	_ = s.SetCounter(ctx, "count", 4)
 
-	routes := handlers.ServerRouter(s, "key", "")
+	routes := handlers.ServerRouter(s, "key", "", "")
 	ts := httptest.NewServer(routes)
 
 	defer ts.Close()
@@ -140,7 +140,7 @@ func ExampleMetricGetValueHandlerWithBody() {
 		"maxLoad":   97.34,
 	}
 	s.SetGauges(ctx, gauges)
-	routes := handlers.ServerRouter(s, "key", "")
+	routes := handlers.ServerRouter(s, "key", "", "")
 	ts := httptest.NewServer(routes)
 
 	defer ts.Close()
@@ -179,7 +179,7 @@ func ExampleMetricGetValueHandlerWithBody() {
 
 func ExampleMetricUpdateHandlerWithBody() {
 	s := storage.NewMemory(10)
-	r := handlers.ServerRouter(s, "key", "")
+	r := handlers.ServerRouter(s, "key", "", "")
 	ts := httptest.NewServer(r)
 
 	defer ts.Close()
@@ -223,7 +223,7 @@ func ExampleMetricGetValueHandler() {
 		"usedSpace": 134672046.234,
 	}
 	s.SetGauges(ctx, gauges)
-	r := handlers.ServerRouter(s, "key", "")
+	r := handlers.ServerRouter(s, "key", "", "")
 	ts := httptest.NewServer(r)
 
 	defer ts.Close()
@@ -254,7 +254,7 @@ func ExampleMetricGetValueHandler() {
 
 func ExampleMetricUpdateHandler() {
 	s := storage.NewMemory(10)
-	r := handlers.ServerRouter(s, "key", "")
+	r := handlers.ServerRouter(s, "key", "", "")
 	ts := httptest.NewServer(r)
 
 	defer ts.Close()

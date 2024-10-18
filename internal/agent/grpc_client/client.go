@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ShvetsovYura/metrics-collector/internal/agent"
 	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -37,7 +38,7 @@ func (g *GRPCClient) Close() {
 	g.conn.Close()
 }
 
-func (g *GRPCClient) Send() {
+func (g *GRPCClient) Send(item agent.MetricItem) error {
 
 	// var respHeaders metadata.MD
 	// // получаем переменную интерфейсного типа UsersClient,
@@ -55,6 +56,7 @@ func (g *GRPCClient) Send() {
 	// }
 
 	fmt.Println("send")
+	return nil
 }
 func main() {
 	// устанавливаем соединение с сервером

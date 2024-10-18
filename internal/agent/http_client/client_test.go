@@ -1,7 +1,6 @@
 package httpclient
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,7 +36,7 @@ func TestMetricHttpClient_Send(t *testing.T) {
 	tu := httptest.NewServer(handler)
 	defer tu.Close()
 
-	dataToSend, _ := json.Marshal(agent.MetricItem{ID: "MemFree", MType: "gauge", Value: 123.456, Delta: 0})
+	dataToSend := agent.MetricItem{ID: "MemFree", MType: "gauge", Value: 123.456, Delta: 0}
 	type fields struct {
 		client        http.Client
 		url           string
@@ -46,7 +45,7 @@ func TestMetricHttpClient_Send(t *testing.T) {
 		publicKeyPath string
 	}
 	type args struct {
-		data []byte
+		item agent.MetricItem
 	}
 	tests := []struct {
 		name    string
@@ -65,7 +64,7 @@ func TestMetricHttpClient_Send(t *testing.T) {
 				publicKeyPath: "",
 			},
 			args: args{
-				data: dataToSend,
+				item: dataToSend,
 			},
 			wantErr: false,
 			wantOut: "",
@@ -83,7 +82,7 @@ func TestMetricHttpClient_Send(t *testing.T) {
 			old := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			err := c.Send(tt.args.data)
+			err := c.Send(tt.args.item)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MetricHttpClient.Send() error = %v, wantErr %v", err, tt.wantErr)
 			}

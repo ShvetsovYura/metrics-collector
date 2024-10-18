@@ -108,14 +108,6 @@ func (s *MetricServer) BatchUpdateMetrics(ctx context.Context, in *pb.BatchUpdat
 }
 
 func (s *MetricServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest) (*pb.GetMetricResponse, error) {
-	// md, ok := metadata.FromIncomingContext(ctx)
-	// if ok {
-	// 	values := md.Get("ugugu")
-	// 	if len(values) > 0 {
-	// 		logger.Log.Info(values)
-	// 	}
-	// }
-
 	valGauge, err := s.metrics.GetGauge(ctx, in.Name)
 	if err == nil {
 		return &pb.GetMetricResponse{
@@ -124,23 +116,19 @@ func (s *MetricServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest) (
 			Value: valGauge.GetRawValue(),
 		}, nil
 	} else {
-		// logger.Log.Error(err.Error())
+		logger.Log.Error(err.Error())
 	}
 
 	valCounter, err := s.metrics.GetCounter(ctx, in.Name)
-	if err == nil {
-		// logger.Lo / g.Error(err.Error())
-		return &pb.GetMetricResponse{
-			Id:    in.Name,
-			Mtype: "counter",
-			Delta: valCounter.GetRawValue(),
-		}, nil
-	} else {
-
-		// logger.Log.Error(err.Error())
+	if err != nil {
+		return nil, errors.New("не найдена мертика по такому имени")
 	}
+	return &pb.GetMetricResponse{
+		Id:    in.Name,
+		Mtype: "counter",
+		Delta: valCounter.GetRawValue(),
+	}, nil
 
-	return nil, errors.New("не найдена мертика по такому имени")
 }
 
 func (s *MetricServer) DbPing(ctx context.Context, in *pb.DbPingRequest) (*pb.DbPingResponse, error) {

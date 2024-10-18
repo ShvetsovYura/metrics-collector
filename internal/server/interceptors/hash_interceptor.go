@@ -13,7 +13,7 @@ import (
 )
 
 func HashInterceptorWrapper(key string) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req any, inro *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
 			values := md.Get("HashSHA256")

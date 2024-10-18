@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/handlers"
-	"github.com/ShvetsovYura/metrics-collector/internal/interceptors"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
+	"github.com/ShvetsovYura/metrics-collector/internal/server/interceptors"
 	"github.com/ShvetsovYura/metrics-collector/internal/storage"
 	pb "github.com/ShvetsovYura/metrics-collector/proto"
 	"google.golang.org/grpc"
@@ -146,10 +146,11 @@ type GRPCServer struct {
 	grpcServer grpc.Server
 }
 
-func NewGRPCServer() *GRPCServer {
+func NewGRPCServer(trustedSubnet string, hashKey string) *GRPCServer {
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			interceptors.HashInterceptorWrapper("abracadabra"),
+			interceptors.HashInterceptorWrapper(hashKey),
+			interceptors.TrustedSubnetInterceptorWrapper(trustedSubnet),
 		),
 	}
 	return &GRPCServer{

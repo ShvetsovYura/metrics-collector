@@ -20,18 +20,17 @@ var (
 	buildCommit  string = "N/A"
 )
 
-func ServerFactory(serverType string) (server.IServer, error) {
+func ServerFactory(serverType string, hashKey string, trustedSubnet string) (server.IServer, error) {
 	if serverType == "http" {
 		return server.NewHttpServer(), nil
 	}
 	if serverType == "grpc" {
-		return server.NewGRPCServer(), nil
+		return server.NewGRPCServer(trustedSubnet, hashKey), nil
 	}
 	return nil, errors.New("не удалось определить тип запускаемого сервера")
 }
 
 func main() {
-
 	opts := server.ReadOptions()
 	err := logger.InitLogger(opts.LogLevel)
 	if err != nil {
@@ -39,7 +38,7 @@ func main() {
 	}
 	logger.Log.Info(*opts)
 
-	serverType, err := ServerFactory("grpc")
+	serverType, err := ServerFactory("grpc", opts.Key, opts.TrustedSubnet)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

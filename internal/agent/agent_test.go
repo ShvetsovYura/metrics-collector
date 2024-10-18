@@ -13,7 +13,7 @@ import (
 type MockHTTPClient struct {
 }
 
-func (c *MockHTTPClient) Send(data []byte) error {
+func (c *MockHTTPClient) Send(item MetricItem) error {
 	return nil
 }
 
