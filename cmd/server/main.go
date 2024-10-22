@@ -22,7 +22,7 @@ var (
 
 func ServerFactory(serverType string, hashKey string, trustedSubnet string) (server.IServer, error) {
 	if serverType == "http" {
-		return server.NewHttpServer(), nil
+		return server.NewHTTPServer(), nil
 	}
 	if serverType == "grpc" {
 		return server.NewGRPCServer(trustedSubnet, hashKey), nil

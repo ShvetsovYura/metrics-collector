@@ -121,7 +121,7 @@ type HTTPServer struct {
 	webserver *http.Server
 }
 
-func NewHttpServer() *HTTPServer {
+func NewHTTPServer() *HTTPServer {
 	return &HTTPServer{}
 }
 
@@ -144,6 +144,7 @@ func (s *HTTPServer) Shutdown(ctx context.Context) error {
 
 type GRPCServer struct {
 	grpcServer grpc.Server
+	addr       string
 }
 
 func NewGRPCServer(trustedSubnet string, hashKey string) *GRPCServer {
@@ -163,10 +164,11 @@ func (s *GRPCServer) RegisterHandlers(targetStorage handlers.Storage, opt *Optio
 		&s.grpcServer,
 		handlers.NewMetricServer(targetStorage),
 	)
+	s.addr = opt.EndpointAddr
 }
 
 func (s *GRPCServer) StartListen() error {
-	listen, err := net.Listen("tcp", ":3200")
+	listen, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return err
 	}

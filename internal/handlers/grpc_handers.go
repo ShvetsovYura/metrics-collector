@@ -131,7 +131,7 @@ func (s *MetricServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest) (
 
 }
 
-func (s *MetricServer) DbPing(ctx context.Context, in *pb.DbPingRequest) (*pb.DbPingResponse, error) {
+func (s *MetricServer) DBPing(ctx context.Context, in *pb.DbPingRequest) (*pb.DbPingResponse, error) {
 	err := s.metrics.Ping(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("бд недоступна %w", err)

@@ -2,13 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 
-	"github.com/ShvetsovYura/metrics-collector/internal/util"
 	pb "github.com/ShvetsovYura/metrics-collector/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -19,9 +15,7 @@ import (
 
 func main() {
 	// устанавливаем соединение с сервером
-	conn, err := grpc.NewClient(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithChainUnaryInterceptor(
-		encryptData,
-	))
+	conn, err := grpc.NewClient(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,19 +36,4 @@ func main() {
 	}
 
 	fmt.Println(r)
-}
-
-func encryptData(ctx context.Context, method string, req any, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	d, _ := os.Getwd()
-	p := filepath.Join(d, "public.pem")
-	jsonData, _ := json.Marshal(req)
-	data, err := util.EncryptData(jsonData, p)
-
-	errInvoke := invoker(ctx, method, data, reply, cc, opts...)
-
-	// выполняем действия после вызова метода
-	if errInvoke != nil {
-		log.Printf("[ERROR] %s,%s", method, errInvoke.Error())
-	}
-	return err
 }
