@@ -4,7 +4,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"os/signal"
 	"syscall"
 
@@ -18,8 +20,17 @@ var (
 	buildCommit  string = "N/A"
 )
 
-func main() {
+func serverFactory(serverType string, hashKey string, trustedSubnet string) (server.IServer, error) {
+	if serverType == "http" {
+		return server.NewHTTPServer(), nil
+	}
+	if serverType == "grpc" {
+		return server.NewGRPCServer(trustedSubnet, hashKey), nil
+	}
+	return nil, errors.New("не удалось определить тип запускаемого сервера")
+}
 
+func main() {
 	opts := server.ReadOptions()
 	err := logger.InitLogger(opts.LogLevel)
 	if err != nil {
@@ -27,7 +38,11 @@ func main() {
 	}
 	logger.Log.Info(*opts)
 
-	srv := server.NewServer(40, opts)
+	serverType, err := serverFactory(opts.ServerType, opts.Key, opts.TrustedSubnet)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	srv := server.NewServer(serverType, 40, opts)
 
 	logger.Log.Infof("Start server with options: %v", *opts)
 	showBuildInfo("Build version: ", buildVersion)

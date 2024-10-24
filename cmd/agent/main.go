@@ -4,11 +4,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"os/signal"
 	"syscall"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/agent"
+	grpcclient "github.com/ShvetsovYura/metrics-collector/internal/agent/grpc_client"
 	httpclient "github.com/ShvetsovYura/metrics-collector/internal/agent/http_client"
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
 )
@@ -29,11 +32,12 @@ func main() {
 		fmt.Println("Не удалось инициализировать лог")
 	}
 
-	metricSender := httpclient.NewMetricSender(
-		"http://"+opts.EndpointAddr+"/update/", agent.DefaultContentType, opts.Key, opts.CryptoKey,
-	)
 	metricCollection := agent.NewMetricCollector(metricsCount)
-	a := agent.NewAgent(metricCollection, metricSender, opts)
+	client, err := selectSenderClient(opts.ClientType, opts.EndpointAddr, "", opts.Key, opts.CryptoKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	a := agent.NewAgent(metricCollection, client, opts)
 	showBuildInfo("Build version: ", buildVersion)
 	showBuildInfo("Build date: ", buildDate)
 	showBuildInfo("Build commit: ", buildCommit)
@@ -50,6 +54,17 @@ func showBuildInfo(caption string, v string) {
 		logger.Log.Infof("%s: N/A", caption)
 	} else {
 		logger.Log.Infof("%s: %s", caption, v)
-
 	}
+}
+
+func selectSenderClient(clientType string, addr string, contentType string, hashKey string, cryptoKey string) (agent.Sender, error) {
+	switch clientType {
+	case "http":
+		return httpclient.NewClient("http://"+addr+"/update/", contentType, hashKey, cryptoKey), nil
+	case "grpc":
+		return grpcclient.NewClient(addr, hashKey)
+	default:
+		return nil, errors.New("не найден указанный тип клиента")
+	}
+
 }

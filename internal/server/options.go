@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	ServerTypeDef    = "grpc"
 	EndpointAddrDef  = "localhost:8080"
 	StoreIntervalDef = time.Duration(300 * time.Second)
 	RestoreDef       = true
@@ -23,6 +24,7 @@ const (
 
 // ServerOptions, хранит опции сервера сбора метрик.
 type Options struct {
+	ServerType      string        `env:"SERVR_TYPE" json:"server_type"`        // ServerType: тип запускаемого сервера метрик (http, grpc)
 	EndpointAddr    string        `env:"ADDRESS" json:"address"`               // адрес запуска сервера сбора метрик
 	StoreInterval   time.Duration `env:"STORE_INTERVAL" json:"store_interval"` // интервал сохранения метрик в хранилище
 	FileStoragePath string        `env:"STORE_FILE" json:"store_file"`         // путь до сохранения метрик в файл
@@ -30,6 +32,7 @@ type Options struct {
 	DBDSN           string        `env:"DATABASE_DSN" json:"database_dsn"`     // строка подключения к БД
 	Key             string        `env:"KEY" json:"key"`                       // ключ хеширования сообщения
 	CryptoKey       string        `env:"CRYPTO_KEY" json:"crypto_key"`         // путь до файла с приватным ключом
+	TrustedSubnet   string        `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 	LogLevel        string        `env:"LOG_LEVEL" json:"log_level"`
 }
 
@@ -88,6 +91,9 @@ func (o *Options) getConfigPath() string {
 }
 
 func (o *Options) applyDefaultParams() {
+	if o.ServerType == "" {
+		o.ServerType = ServerTypeDef
+	}
 	if o.EndpointAddr == "" {
 		o.EndpointAddr = EndpointAddrDef
 	}
@@ -141,6 +147,7 @@ func (o *Options) parseArgs() {
 	flag.StringVar(&o.DBDSN, "d", "", "database connection DSN")
 	flag.StringVar(&o.Key, "k", "", "Secret key value")
 	flag.StringVar(&o.CryptoKey, "crypto-key", "", "path to private key")
+	flag.StringVar(&o.TrustedSubnet, "t", "", "verify client in trusted subnet")
 
 	flag.Parse()
 }
@@ -182,5 +189,8 @@ func reassignOptions(curOpt *Options, tempOpt *Options) {
 	}
 	if curOpt.LogLevel == "" && tempOpt.LogLevel != "" {
 		curOpt.LogLevel = tempOpt.LogLevel
+	}
+	if curOpt.TrustedSubnet == "" && tempOpt.TrustedSubnet != "" {
+		curOpt.TrustedSubnet = tempOpt.TrustedSubnet
 	}
 }
