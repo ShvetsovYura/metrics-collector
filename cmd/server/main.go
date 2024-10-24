@@ -38,7 +38,7 @@ func main() {
 	}
 	logger.Log.Info(*opts)
 
-	serverType, err := ServerFactory("grpc", opts.Key, opts.TrustedSubnet)
+	serverType, err := ServerFactory(opts.ServerType, opts.Key, opts.TrustedSubnet)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

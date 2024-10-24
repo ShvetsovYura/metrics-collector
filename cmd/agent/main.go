@@ -24,7 +24,7 @@ var (
 
 const metricsCount int = 40
 
-func main1() {
+func main() {
 	fmt.Println("Запускается АГЕНТ сбора метрик...")
 	opts := agent.ReadOptions()
 	err := logger.InitLogger(opts.LogLevel)
@@ -33,7 +33,7 @@ func main1() {
 	}
 
 	metricCollection := agent.NewMetricCollector(metricsCount)
-	client, err := selectSenderClient("grpc", opts.EndpointAddr, "", opts.Key, opts.CryptoKey)
+	client, err := selectSenderClient(opts.ClientType, opts.EndpointAddr, "", opts.Key, opts.CryptoKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -54,7 +54,6 @@ func showBuildInfo(caption string, v string) {
 		logger.Log.Infof("%s: N/A", caption)
 	} else {
 		logger.Log.Infof("%s: %s", caption, v)
-
 	}
 }
 
@@ -63,7 +62,7 @@ func selectSenderClient(clientType string, addr string, contentType string, hash
 	case "http":
 		return httpclient.NewClient("http://"+addr+"/update/", contentType, hashKey, cryptoKey), nil
 	case "grpc":
-		return grpcclient.NewClient(addr, hashKey, cryptoKey)
+		return grpcclient.NewClient(addr, hashKey)
 	default:
 		return nil, errors.New("не найден указанный тип клиента")
 	}

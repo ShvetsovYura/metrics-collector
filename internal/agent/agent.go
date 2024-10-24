@@ -86,12 +86,12 @@ func (a *Agent) runCollectMetrics(ctx context.Context, wg *sync.WaitGroup) {
 			// если убрать блокировку - будет падать
 			// так как в другой горутине читаем
 			// из этой мапы
-			a.mx.Lock()
+			// a.mx.Lock()
 			for m := range mxCh {
 				a.collection.SetItem(m)
 			}
 			a.collection.IncrementCounter()
-			a.mx.Unlock()
+			// a.mx.Unlock()
 		}
 	}
 }
@@ -118,6 +118,9 @@ func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 			var workers int
 
 			if a.options.RateLimit == 0 {
+				if a.collection.Count() < 1 {
+					continue
+				}
 				workers = a.collection.Count()
 			} else {
 				workers = a.options.RateLimit

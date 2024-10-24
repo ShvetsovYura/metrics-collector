@@ -34,7 +34,7 @@ func (s *MetricServer) ListMetricsValues(ctx context.Context, in *pb.ListMetrics
 
 func (s *MetricServer) UpdateMetric(ctx context.Context, in *pb.UpdateMetricRequest) (*pb.UpdateMetricResponse, error) {
 	var response pb.UpdateMetricResponse
-
+	logger.Log.Debug("metric type %v", in.Mtype)
 	switch in.Mtype {
 	case internal.InGaugeName:
 		err := s.metrics.SetGauge(ctx, in.Id, float64(in.Value))

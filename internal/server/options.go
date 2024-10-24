@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	ServerTypeDef    = "grpc"
 	EndpointAddrDef  = "localhost:8080"
 	StoreIntervalDef = time.Duration(300 * time.Second)
 	RestoreDef       = true
@@ -23,6 +24,7 @@ const (
 
 // ServerOptions, хранит опции сервера сбора метрик.
 type Options struct {
+	ServerType      string        `env:"SERVR_TYPE" json:"server_type"`        // ServerType: тип запускаемого сервера метрик (http, grpc)
 	EndpointAddr    string        `env:"ADDRESS" json:"address"`               // адрес запуска сервера сбора метрик
 	StoreInterval   time.Duration `env:"STORE_INTERVAL" json:"store_interval"` // интервал сохранения метрик в хранилище
 	FileStoragePath string        `env:"STORE_FILE" json:"store_file"`         // путь до сохранения метрик в файл
@@ -89,6 +91,9 @@ func (o *Options) getConfigPath() string {
 }
 
 func (o *Options) applyDefaultParams() {
+	if o.ServerType == "" {
+		o.ServerType = ServerTypeDef
+	}
 	if o.EndpointAddr == "" {
 		o.EndpointAddr = EndpointAddrDef
 	}
