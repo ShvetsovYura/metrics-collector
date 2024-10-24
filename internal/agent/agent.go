@@ -96,12 +96,12 @@ func (a *Agent) runCollectMetrics(ctx context.Context, wg *sync.WaitGroup) {
 			// если убрать блокировку - будет падать
 			// так как в другой горутине читаем
 			// из этой мапы
-			// a.mx.Lock()
+			a.mx.Lock()
 			for m := range mxCh {
 				a.collection.SetItem(m)
 			}
 			a.collection.IncrementCounter()
-			// a.mx.Unlock()
+			a.mx.Unlock()
 		}
 	}
 }
