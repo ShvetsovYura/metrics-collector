@@ -20,7 +20,7 @@ var (
 	buildCommit  string = "N/A"
 )
 
-func ServerFactory(serverType string, hashKey string, trustedSubnet string) (server.IServer, error) {
+func serverFactory(serverType string, hashKey string, trustedSubnet string) (server.IServer, error) {
 	if serverType == "http" {
 		return server.NewHTTPServer(), nil
 	}
@@ -38,7 +38,7 @@ func main() {
 	}
 	logger.Log.Info(*opts)
 
-	serverType, err := ServerFactory(opts.ServerType, opts.Key, opts.TrustedSubnet)
+	serverType, err := serverFactory(opts.ServerType, opts.Key, opts.TrustedSubnet)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 
 	"github.com/ShvetsovYura/metrics-collector/internal/logger"
+	"github.com/ShvetsovYura/metrics-collector/internal/util"
 )
 
 func MakeGaugeMetricItem(name string, val float64) MetricItem {
@@ -19,7 +20,7 @@ func MakeGaugeMetricItem(name string, val float64) MetricItem {
 }
 
 type Sender interface {
-	Send(item MetricItem) error
+	Send(item MetricItem, currentIP string) error
 }
 type Setter interface {
 	SetItem(m MetricItem)
@@ -41,14 +42,23 @@ type Agent struct {
 	collection Storer
 	options    *Options
 	sender     Sender
+	ip         string
 }
 
 // NewAgent: инициализация нового экземляра агента сбора метрик
 func NewAgent(metricCollector Storer, metricSender Sender, options *Options) *Agent {
+	addresses, err := util.GetLocalIPs()
+	if err != nil {
+		logger.Log.Fatalf("ошибка получения IP %w", err)
+	}
+	if len(addresses) < 1 {
+		logger.Log.Fatal("список IP адресов пуст")
+	}
 	return &Agent{
 		collection: metricCollector,
 		options:    options,
 		sender:     metricSender,
+		ip:         addresses[0].String(),
 	}
 }
 
@@ -148,7 +158,7 @@ func (a *Agent) runSendMetrics(ctx context.Context, wg *sync.WaitGroup) {
 
 func (a *Agent) senderWorker(metricsCh <-chan MetricItem) {
 	for m := range metricsCh {
-		if err := a.sender.Send(m); err != nil {
+		if err := a.sender.Send(m, a.ip); err != nil {
 			logger.Log.Warnf("не удалось отправить метрику: %s", m)
 		}
 	}

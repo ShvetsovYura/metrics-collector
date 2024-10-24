@@ -37,7 +37,7 @@ func (g *GRPCClient) Close() {
 	g.conn.Close()
 }
 
-func (g *GRPCClient) Send(item agent.MetricItem) error {
+func (g *GRPCClient) Send(item agent.MetricItem, currentIP string) error {
 	var respHeaders metadata.MD
 	logger.Log.Debug("grpc start send metric")
 	msg := pb.UpdateMetricRequest{
@@ -55,6 +55,9 @@ func (g *GRPCClient) Send(item agent.MetricItem) error {
 		}
 		md.Append("HashSHA256", util.Hash(msgData, g.hashKey))
 	}
+
+	md.Append("X-Real-IP", currentIP)
+	md.Append("x-real-ip")
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 	logger.Log.Debug("before send")

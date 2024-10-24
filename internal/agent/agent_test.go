@@ -13,7 +13,7 @@ import (
 type MockHTTPClient struct {
 }
 
-func (c *MockHTTPClient) Send(item MetricItem) error {
+func (c *MockHTTPClient) Send(item MetricItem, currentIP string) error {
 	return nil
 }
 

@@ -11,7 +11,7 @@ func CheckTrustetSubnet(trustedSubnet string) func(next http.Handler) http.Handl
 	return func(next http.Handler) http.Handler {
 		handler := func(resp http.ResponseWriter, req *http.Request) {
 			xRealIP := req.Header.Get("x-real-ip")
-			logger.Log.Info("входящий ip %s", xRealIP)
+			logger.Log.Debug("входящий ip %s", xRealIP)
 			if trustedSubnet != "" {
 				if xRealIP == "" {
 					resp.WriteHeader(http.StatusForbidden)

@@ -82,7 +82,7 @@ func TestMetricHttpClient_Send(t *testing.T) {
 			old := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			err := c.Send(tt.args.item)
+			err := c.Send(tt.args.item, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MetricHttpClient.Send() error = %v, wantErr %v", err, tt.wantErr)
 			}

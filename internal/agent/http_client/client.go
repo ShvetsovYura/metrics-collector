@@ -31,7 +31,7 @@ func NewClient(url string, contentType string, hashKey string, publicKeyPath str
 	}
 }
 
-func (c *MetricHTTPClient) Send(item agent.MetricItem) error {
+func (c *MetricHTTPClient) Send(item agent.MetricItem, currentIP string) error {
 	var buf bytes.Buffer
 	var headers = http.Header{}
 	var data_ []byte
@@ -42,11 +42,8 @@ func (c *MetricHTTPClient) Send(item agent.MetricItem) error {
 	}
 
 	headers.Add("Content-Type", c.contentType)
-	addresses, err := util.GetLocalIPs()
-	if err != nil {
-		return fmt.Errorf("ошибка получения IP %w", err)
-	}
-	headers.Add("X-Real-IP", addresses[0].String())
+
+	headers.Add("X-Real-IP", currentIP)
 
 	if c.publicKeyPath != "" {
 		var errEncrypt error
