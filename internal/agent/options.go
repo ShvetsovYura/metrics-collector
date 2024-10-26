@@ -15,19 +15,21 @@ import (
 )
 
 const (
+	ClientTypeDef     = "grpc"
 	EndpointAddrDef   = "localhost:8080"
 	ReportIntervalDef = time.Duration(2 * time.Second)
 	PollIntervalDef   = time.Duration(2 * time.Second)
-	LogLevelDef       = "info"
+	LogLevelDef       = "debug"
 )
 
 // AgentOptoins хранит информацию настроек запуска
 // и выполнения агента сбора метрик
 type Options struct {
+	ClientType     string        `env:"CLIENT_TYPE" json:"client_type"`         // ClientType: тип клиента отправки метрик (http, grpc)
 	EndpointAddr   string        `env:"ADDRESS" json:"address"`                 // EndpointAddr: адрес отправки метрик
 	ReportInterval time.Duration `env:"REPORT_INTERVAL" json:"report_interval"` // ReportInterval: интервал отправки метрик на сервер
 	PollInterval   time.Duration `env:"POLL_INTERVAL" json:"poll_interval"`     // PoolInterval: интервал сбора метрик
-	Key            string        `env:"KEY"`                                    // Key: приватный ключ доступа
+	Key            string        `env:"KEY"`                                    // Key: ключ хэширования
 	RateLimit      int           `env:"RATE_LIMIT"`                             // RateLimit: сколько одновременно можно выполнять отправку метрик на сервер
 	CryptoKey      string        `env:"CRYPTO_KEY" json:"crypto_key"`           // CryptoKey: путь до файла с публичным ключом
 	LogLevel       string        `json:"log_level"`
@@ -92,6 +94,9 @@ func (o *Options) parseConfig() {
 }
 
 func (o *Options) applyDefaultParams() {
+	if o.ClientType == "" {
+		o.ClientType = ClientTypeDef
+	}
 	if o.EndpointAddr == "" {
 		o.EndpointAddr = EndpointAddrDef
 	}
